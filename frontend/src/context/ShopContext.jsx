@@ -11,7 +11,19 @@ function loadCart() {
     return {};
   }
 }
+function parseVndPrice(price) {
+  if (typeof price === "number") return price * 1000;
 
+  if (typeof price === "string") {
+    const digits = price.replace(/[^\d]/g, "");
+    if (!digits) return 0;
+    const n = Number(digits);
+    if (!Number.isFinite(n)) return 0;
+    return n < 1000 ? n * 1000 : n;
+  }
+
+  return 0;
+}
 const ShopContextProvider = ({ children }) => {
   // Không dùng ký hiệu tiền tệ nữa
   const currency = ""; // hoặc null
@@ -56,8 +68,7 @@ const ShopContextProvider = ({ children }) => {
     let total = 0;
     for (const id in cartItems) {
       const item = products.find((p) => String(p._id || p.id) === String(id));
-      if (item) total += (Number(item.price) || 0) * cartItems[id];
-    }
+if (item) total += parseVndPrice(item.price) * (cartItems[id] || 0);    }
     return total;
   };
 
