@@ -4,6 +4,7 @@ import LatestCollection from "../components/LatestCollection";
 import { ShopContext } from "../context/ShopContext";
 import BestSeller from "../components/BestSeller";
 import OurPolicy from "../components/OurPolicy";
+import NewsletterBox from "../components/NewsletterBox";
 
 const Home = () => {
   const { addToCart } = useContext(ShopContext);
@@ -14,6 +15,7 @@ const Home = () => {
       <LatestCollection />
       <BestSeller />
       <OurPolicy  />
+      <NewsletterBox />
       <div className="p-6">
         <button
           onClick={() => addToCart("test-1")}
