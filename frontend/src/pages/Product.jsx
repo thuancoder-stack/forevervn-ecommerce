@@ -25,6 +25,8 @@ const Product = () => {
 
     useEffect(() => {
         fetchProductData();
+        window.scrollTo(0, 0);
+        setSize('');
     }, [productId, products]);
 
     return productData ? (

@@ -1,5 +1,6 @@
 import { createContext, useEffect, useMemo, useState } from 'react';
 import { products } from '../assets/assets';
+import { useNavigate } from 'react-router-dom';
 
 export const ShopContext = createContext(null);
 
@@ -31,7 +32,7 @@ const ShopContextProvider = ({ children }) => {
     const [search, setSearch]         = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [cartItems, setCartItems]   = useState(() => loadCart());
-
+    const navigate = useNavigate();
     useEffect(() => {
         localStorage.setItem('cartItems', JSON.stringify(cartItems));
     }, [cartItems]);
@@ -120,6 +121,7 @@ const ShopContextProvider = ({ children }) => {
             updateCartQty,
             getCartCount,
             getCartAmount,
+            navigate,
             search,
             setSearch,
             showSearch,
