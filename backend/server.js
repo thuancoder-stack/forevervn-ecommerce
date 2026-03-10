@@ -27,3 +27,25 @@ app.get('/', (req, res) => {
 app.listen(process.env.PORT, () => {
     console.log(`🚀 Server chạy tại port ${process.env.PORT}`);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// backend/
+// ├── config/          ← Cấu hình (MongoDB, cloudinary...)
+// ├── controllers/     ← Xử lý logic nghiệp vụ
+// ├── middleware/      ← Kiểm tra token, quyền truy cập
+// ├── models/          ← Cấu trúc dữ liệu MongoDB
+// ├── routes/          ← Định nghĩa các API endpoint
+// └── server.js        ← Điểm khởi chạy server
