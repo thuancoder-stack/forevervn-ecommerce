@@ -74,12 +74,15 @@ const registerUser = async (req, res) => {
 
 
 // Route for admin login
-const adminLogin = async (req, res) => {
+const loginAdmin = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-            const token = jwt.sign(email + password, process.env.JWT_SECRET);
+        const adminEmail = (process.env.ADMIN_EMAIL || '').trim().replace(/^"|"$/g, '');
+        const adminPassword = (process.env.ADMIN_PASSWORD || '').trim().replace(/^"|"$/g, '');
+
+        if (email === adminEmail && password === adminPassword) {
+            const token = jwt.sign({ email }, process.env.JWT_SECRET);
             res.json({ success: true, token });
         } else {
             res.json({ success: false, message: 'Invalid credentials' });
@@ -91,4 +94,4 @@ const adminLogin = async (req, res) => {
     }
 };
 
-export { loginUser, registerUser, adminLogin };
+export { loginUser, registerUser, loginAdmin };
