@@ -13,7 +13,7 @@ const port = process.env.PORT || 4000;
 connectDB();
 connectCloudinary();
 
-// Middleware ← Kiểm tra token, quyền truy cập, v.v.`
+// Middleware ← Kiểm tra token, quyền truy cập, v.v.
 app.use(cors());
 app.use(express.json());
 
@@ -28,8 +28,8 @@ app.get('/', (req, res) => {
 //     .then(() => console.log('✅ MongoDB đã kết nối'))
 //     .catch((err) => console.log('❌ Lỗi kết nối:', err))
 
-app.listen(process.env.PORT, () => {
-    console.log(`🚀 Server chạy tại port ${process.env.PORT}`);
+app.listen(port, '0.0.0.0', () => {
+    console.log(`🚀 Server chạy tại http://localhost:${port}`);
 });
 
 
