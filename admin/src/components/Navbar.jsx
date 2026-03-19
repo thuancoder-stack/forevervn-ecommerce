@@ -1,40 +1,48 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import logo from '../assets/logo.png'
+import { Sun, Moon, LogOut } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const Navbar = ({ setToken }) => {
-  const [dark, setDark] = useState(false)
+  const navigate = useNavigate()
+  const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
+  }, [dark])
 
   const toggleDark = () => {
-    const newDark = !dark
-    setDark(newDark)
-    if (newDark) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    setDark((prev) => !prev)
+  }
+
+  const handleLogout = () => {
+    setToken('')
+    localStorage.removeItem('token')
+    navigate('/', { replace: true })
   }
 
   return (
-    <nav className='flex items-center justify-between py-4 px-[4%] bg-white dark:bg-gray-900 transition-colors'>
+    <nav className='flex items-center justify-between px-6 py-3 bg-white dark:bg-gray-900 transition-colors shadow-sm'>
+      <img src={logo} alt='logo' className='w-[max(12%,120px)]' />
 
-      <img src={logo} alt='logo' className='w-[max(15%,150px)]'  />
-
-      <div className='flex items-center gap-5 mr-4'>
+      <div className='flex items-center gap-3'>
         <button
           onClick={toggleDark}
-          className='w-10 h-10 rounded-full border border-pink-200 dark:border-gray-600 bg-pink-50 dark:bg-gray-800 flex items-center justify-center text-lg transition-colors'
+          title={dark ? 'Light mode' : 'Dark mode'}
+          className='w-9 h-9 rounded-full flex items-center justify-center border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-300 hover:border-pink-300 hover:text-pink-500 transition-all duration-200'
         >
-          {dark ? '☀️' : '🌙'}
+          {dark ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
         <button
-          onClick={() => setToken('')}
-          className='bg-pink-500 hover:bg-pink-600 transition-colors text-white rounded-full text-sm px-8 py-2 font-medium tracking-wide shadow-sm'
+          onClick={handleLogout}
+          className='flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white bg-pink-500 hover:bg-pink-600 active:scale-95 transition-all duration-200 shadow-sm'
         >
-          Logout
+          <LogOut size={15} />
+          <span>Logout</span>
         </button>
       </div>
-
     </nav>
   )
 }
