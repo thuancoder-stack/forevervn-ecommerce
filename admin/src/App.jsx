@@ -41,8 +41,8 @@ const App = () => {
         <div className='flex-1 p-4'>
           <Routes>
             <Route path='/' element={<Navigate to='/add' replace />} />
-            <Route path='/add' element={<Add token={token} backendUrl={backendUrl} />} />
-            <Route path='/list' element={<List token={token} backendUrl={backendUrl} />} />
+            <Route path='/add' element={<Add token={token} setToken={setToken} backendUrl={backendUrl} />} />
+            <Route path='/list' element={<List token={token} setToken={setToken} backendUrl={backendUrl} />} />
             <Route path='/orders' element={<Orders token={token} backendUrl={backendUrl} />} />
             <Route path='*' element={<Navigate to='/add' replace />} />
           </Routes>
