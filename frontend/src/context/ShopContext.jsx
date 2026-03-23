@@ -11,9 +11,54 @@ import axios from 'axios';
 
 export const ShopContext = createContext(null);
 
-function loadCartFromStorage() {
+const LEGACY_CART_STORAGE_KEY = 'cartItems';
+const GUEST_CART_STORAGE_KEY = 'cartItems:guest';
+
+function getInitialToken() {
     try {
-        const raw = localStorage.getItem('cartItems');
+        return localStorage.getItem('token') || '';
+    } catch {
+        return '';
+    }
+}
+
+function parseTokenPayload(token) {
+    try {
+        if (!token) return null;
+        const parts = token.split('.');
+        if (parts.length < 2) return null;
+
+        const base64Url = parts[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+        return JSON.parse(atob(padded));
+    } catch {
+        return null;
+    }
+}
+
+function getCartStorageKeyByToken(token) {
+    // CHANGE: tach cart theo user id/email trong token de user khong dung chung gio
+    const payload = parseTokenPayload(token);
+    const userKey = payload?.id || payload?._id || payload?.email || '';
+
+    if (!userKey) return GUEST_CART_STORAGE_KEY;
+    return `cartItems:user:${String(userKey)}`;
+}
+
+function loadCartFromStorage(storageKey) {
+    try {
+        let raw = localStorage.getItem(storageKey);
+
+        // CHANGE: ho tro migrate key cu cartItems -> cartItems:guest
+        if (!raw && storageKey === GUEST_CART_STORAGE_KEY) {
+            const legacyRaw = localStorage.getItem(LEGACY_CART_STORAGE_KEY);
+            if (legacyRaw) {
+                raw = legacyRaw;
+                localStorage.setItem(GUEST_CART_STORAGE_KEY, legacyRaw);
+            }
+        }
+
         const parsed = raw ? JSON.parse(raw) : {};
         return parsed && typeof parsed === 'object' ? parsed : {};
     } catch {
@@ -153,22 +198,30 @@ const ShopContextProvider = ({ children }) => {
 
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);
-    const [cartItems, setCartItems] = useState(() => loadCartFromStorage());
     const [products, setProducts] = useState([]);
-    const [token, setToken] = useState('');
+    const [token, setToken] = useState(() => getInitialToken());
+
+    // CHANGE: cart khoi tao theo dung user token hien tai
+    const [cartItems, setCartItems] = useState(() => {
+        const initialToken = getInitialToken();
+        const storageKey = getCartStorageKeyByToken(initialToken);
+        return loadCartFromStorage(storageKey);
+    });
+
     const navigate = useNavigate();
 
-    // CHANGE: khoi tao token tu localStorage khi app mount
+    // CHANGE: token doi -> nap gio dung cua user do
     useEffect(() => {
-        const savedToken = localStorage.getItem('token');
-        if (savedToken) {
-            setToken(savedToken);
-        }
-    }, []);
+        const storageKey = getCartStorageKeyByToken(token);
+        const nextCart = loadCartFromStorage(storageKey);
+        setCartItems(nextCart);
+    }, [token]);
 
+    // CHANGE: luu cart theo key rieng tung user
     useEffect(() => {
-        localStorage.setItem('cartItems', JSON.stringify(cartItems));
-    }, [cartItems]);
+        const storageKey = getCartStorageKeyByToken(token);
+        localStorage.setItem(storageKey, JSON.stringify(cartItems));
+    }, [cartItems, token]);
 
     // CHANGE: cart update theo functional setState de tranh stale state
     const addToCart = useCallback((itemId, size) => {
@@ -263,12 +316,10 @@ const ShopContextProvider = ({ children }) => {
     // CHANGE: gop san pham DB + assets; API loi thi dung assets
     const getProductsData = useCallback(async () => {
         try {
-            const token =
-                localStorage.getItem('token') ||
-                localStorage.getItem('adminToken') ||
-                '';
+            const requestToken =
+                token || localStorage.getItem('adminToken') || '';
 
-            const config = token ? { headers: { token } } : {};
+            const config = requestToken ? { headers: { token: requestToken } } : {};
             const response = await axios.get(
                 `${backendUrl}/api/product/list`,
                 config,
@@ -288,7 +339,7 @@ const ShopContextProvider = ({ children }) => {
             console.error('getProductsData error:', error);
             setProducts(mergeProducts([], localProducts));
         }
-    }, [backendUrl]);
+    }, [backendUrl, token]);
 
     useEffect(() => {
         getProductsData();
@@ -340,6 +391,7 @@ const ShopContextProvider = ({ children }) => {
     useEffect(() => {
         reconcileCartItems();
     }, [reconcileCartItems]);
+
     // CHANGE: gom logic dang xuat dung chung
     const logout = useCallback(() => {
         localStorage.removeItem('token');
@@ -365,7 +417,8 @@ const ShopContextProvider = ({ children }) => {
             showSearch,
             setShowSearch,
             backendUrl,
-            getProductsData,            token,
+            getProductsData,
+            token,
             setToken,
             logout,
         }),
@@ -381,7 +434,8 @@ const ShopContextProvider = ({ children }) => {
             search,
             showSearch,
             backendUrl,
-            getProductsData,            token, // CHANGE: them token vao dependency de context cap nhat khi dang nhap
+            getProductsData,
+            token,
             logout,
         ],
     );
@@ -392,7 +446,3 @@ const ShopContextProvider = ({ children }) => {
 };
 
 export default ShopContextProvider;
-
-
-
-
