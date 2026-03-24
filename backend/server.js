@@ -8,56 +8,31 @@ import connectCloudinary from './config/cloudinary.js';
 import userRouter from './routes/userRouter.js';
 import productRouter from './routes/productRouter.js';
 import cartRouter from './routes/cartRoute.js';
+import orderRouter from './routes/orderRoute.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 dotenv.config({ path: path.join(__dirname, '.env') });
-// APP config
+
 const app = express();
 const port = process.env.PORT || 4000;
 
-// Kết nối MongoDB
 connectDB();
 connectCloudinary();
 
-// Middleware ← Kiểm tra token, quyền truy cập, v.v.
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/user', userRouter) 
-app.use('/api/product', productRouter)
-app.use('/api/cart', cartRouter)
-// Các route API sẽ được định nghĩa ở đây routes/
+app.use('/api/user', userRouter);
+app.use('/api/product', productRouter);
+app.use('/api/cart', cartRouter);
+app.use('/api/order', orderRouter);
+
 app.get('/', (req, res) => {
-    res.send('Hello World! API đang chạy...');
+    res.send('Hello World! API dang chay...');
 });
-// // Kết nối MongoDB
-// mongoose.connect(process.env.MONGODB_URI)
-//     .then(() => console.log('✅ MongoDB đã kết nối'))
-//     .catch((err) => console.log('❌ Lỗi kết nối:', err))
 
 app.listen(port, '0.0.0.0', () => {
-    console.log(`🚀 Server chạy tại http://localhost:${port}`);
+    console.log(`Server chay tai http://localhost:${port}`);
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// backend/
-// ├── config/          ← Cấu hình (MongoDB, cloudinary...)
-// ├── controllers/     ← Xử lý logic nghiệp vụ
-// ├── middleware/      ← Kiểm tra token, quyền truy cập
-// ├── models/          ← Cấu trúc dữ liệu MongoDB
-// ├── routes/          ← Định nghĩa các API endpoint
-// └── server.js        ← Điểm khởi chạy server
