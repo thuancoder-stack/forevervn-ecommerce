@@ -66,6 +66,39 @@ function loadCartFromStorage(storageKey) {
     }
 }
 
+function normalizeCartData(cartValue) {
+    if (!cartValue || typeof cartValue !== 'object' || Array.isArray(cartValue)) {
+        return {};
+    }
+
+    const normalized = {};
+
+    for (const itemId in cartValue) {
+        const sizeMap = cartValue[itemId];
+
+        if (!sizeMap || typeof sizeMap !== 'object' || Array.isArray(sizeMap)) {
+            continue;
+        }
+
+        for (const size in sizeMap) {
+            const qty = Number(sizeMap[size]);
+            if (!Number.isFinite(qty) || qty <= 0) continue;
+
+            if (!normalized[itemId]) {
+                normalized[itemId] = {};
+            }
+
+            normalized[itemId][size] = qty;
+        }
+    }
+
+    return normalized;
+}
+
+function hasCartEntries(cartValue) {
+    return Object.keys(normalizeCartData(cartValue)).length > 0;
+}
+
 function parseVndPrice(price) {
     if (typeof price === 'number') return price < 1000 ? price * 1000 : price;
 
@@ -205,23 +238,124 @@ const ShopContextProvider = ({ children }) => {
     const [cartItems, setCartItems] = useState(() => {
         const initialToken = getInitialToken();
         const storageKey = getCartStorageKeyByToken(initialToken);
-        return loadCartFromStorage(storageKey);
+        return normalizeCartData(loadCartFromStorage(storageKey));
     });
+    const [isCartHydrated, setIsCartHydrated] = useState(false);
 
     const navigate = useNavigate();
 
-    // CHANGE: token doi -> nap gio dung cua user do
+    // CHANGE: token doi -> nap cart tu DB (neu login), fallback localStorage
+    // Neu DB cart rong ma local cart co data thi day local cart len DB
     useEffect(() => {
-        const storageKey = getCartStorageKeyByToken(token);
-        const nextCart = loadCartFromStorage(storageKey);
-        setCartItems(nextCart);
-    }, [token]);
+        let cancelled = false;
+
+        const hydrateCart = async () => {
+            setIsCartHydrated(false);
+
+            const authToken = token || localStorage.getItem('token') || '';
+            const storageKey = getCartStorageKeyByToken(authToken);
+            const localCart = normalizeCartData(loadCartFromStorage(storageKey));
+
+            if (!authToken) {
+                if (!cancelled) {
+                    setCartItems(localCart);
+                    setIsCartHydrated(true);
+                }
+                return;
+            }
+
+            try {
+                const response = await axios.post(
+                    `${backendUrl}/api/cart/get`,
+                    {},
+                    { headers: { token: authToken } },
+                );
+
+                if (response?.data?.success) {
+                    const remoteCart = normalizeCartData(response.data.cartData);
+                    const shouldUseLocalCart = !hasCartEntries(remoteCart) && hasCartEntries(localCart);
+                    const nextCart = shouldUseLocalCart ? localCart : remoteCart;
+
+                    if (!cancelled) {
+                        setCartItems(nextCart);
+                    }
+
+                    if (shouldUseLocalCart) {
+                        try {
+                            await axios.post(
+                                `${backendUrl}/api/cart/update`,
+                                { cartData: nextCart },
+                                { headers: { token: authToken } },
+                            );
+                        } catch (syncError) {
+                            console.error('initial cart sync error:', syncError);
+                        }
+                    }
+                } else if (!cancelled) {
+                    setCartItems(localCart);
+                }
+            } catch (error) {
+                console.error('getUserCart error:', error);
+                if (!cancelled) {
+                    setCartItems(localCart);
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsCartHydrated(true);
+                }
+            }
+        };
+
+        hydrateCart();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [backendUrl, token]);
 
     // CHANGE: luu cart theo key rieng tung user
     useEffect(() => {
-        const storageKey = getCartStorageKeyByToken(token);
-        localStorage.setItem(storageKey, JSON.stringify(cartItems));
+        const authToken = token || localStorage.getItem('token') || '';
+        const storageKey = getCartStorageKeyByToken(authToken);
+        localStorage.setItem(storageKey, JSON.stringify(normalizeCartData(cartItems)));
     }, [cartItems, token]);
+
+    // CHANGE: khi cart update thi dong bo cartData len database
+    const syncCartToDatabase = useCallback(
+        async (nextCart, authToken) => {
+            if (!authToken) return;
+
+            try {
+                const response = await axios.post(
+                    `${backendUrl}/api/cart/update`,
+                    { cartData: nextCart },
+                    { headers: { token: authToken } },
+                );
+
+                if (response?.data?.success !== true) {
+                    console.error(
+                        'syncCartToDatabase failed:',
+                        response?.data?.message || 'Unknown error',
+                    );
+                }
+            } catch (error) {
+                console.error('syncCartToDatabase error:', error);
+            }
+        },
+        [backendUrl],
+    );
+
+    useEffect(() => {
+        const authToken = token || localStorage.getItem('token') || '';
+
+        if (!authToken || !isCartHydrated) return;
+
+        const timeoutId = setTimeout(() => {
+            syncCartToDatabase(normalizeCartData(cartItems), authToken);
+        }, 250);
+
+        return () => clearTimeout(timeoutId);
+    }, [cartItems, isCartHydrated, syncCartToDatabase, token]);
 
     // CHANGE: cart update theo functional setState de tranh stale state
     const addToCart = useCallback((itemId, size) => {
