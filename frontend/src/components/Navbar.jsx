@@ -1,10 +1,11 @@
 ﻿import React, { useContext, useState } from 'react';
 import { assets } from '../assets/assets';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 
 const Navbar = () => {
     const [visible, setVisible] = useState(false);
+    const location = useLocation();
     const {
         getCartCount,
         setShowSearch,
@@ -15,6 +16,7 @@ const Navbar = () => {
     } = useContext(ShopContext);
 
     const cartCount = getCartCount();
+    const hideCartBadge = location.pathname === '/login';
 
     return (
         <div className="flex items-center justify-between py-5 font-medium">
@@ -104,7 +106,7 @@ const Navbar = () => {
                         className="w-5 min-w-5"
                         alt="Cart"
                     />
-                    {cartCount > 0 && (
+                    {!hideCartBadge && cartCount > 0 && (
                         <p className="absolute right-[-5px] bottom-[-5px] w-4 text-center leading-4 bg-black text-white aspect-square rounded-full text-[8px]">
                             {cartCount}
                         </p>
