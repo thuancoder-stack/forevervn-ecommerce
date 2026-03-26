@@ -1,18 +1,33 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 import { ShopContext } from '../context/ShopContext';
 import Title from '../components/Title';
+
+function mapOrdersToItems(orders = []) {
+    const allOrdersItem = [];
+
+    orders.forEach((order) => {
+        order.items.forEach((item) => {
+            allOrdersItem.push({
+                ...item,
+                status: order.status,
+                payment: order.payment,
+                paymentMethod: order.paymentMethod,
+                date: order.date,
+            });
+        });
+    });
+
+    return allOrdersItem.reverse();
+}
 
 const Orders = () => {
     const { backendUrl, token, currency } = useContext(ShopContext);
     const [orderData, setOrderData] = useState([]);
 
-    const loadOrderData = async () => {
+    const fetchOrderData = useCallback(async () => {
         try {
-            if (!token) {
-                setOrderData([]);
-                return null;
-            }
+            if (!token) return null;
 
             const response = await axios.post(
                 `${backendUrl}/api/order/userorders`,
@@ -21,32 +36,40 @@ const Orders = () => {
             );
 
             if (response.data.success) {
-                const allOrdersItem = [];
-
-                response.data.orders.forEach((order) => {
-                    order.items.forEach((item) => {
-                        allOrdersItem.push({
-                            ...item,
-                            status: order.status,
-                            payment: order.payment,
-                            paymentMethod: order.paymentMethod,
-                            date: order.date,
-                        });
-                    });
-                });
-
-                setOrderData(allOrdersItem.reverse());
+                return mapOrdersToItems(response.data.orders);
             }
         } catch (error) {
             console.error(error);
         }
 
-        return null;
-    };
+        return [];
+    }, [backendUrl, token]);
+
+    const loadOrderData = useCallback(async () => {
+        const nextOrderData = await fetchOrderData();
+
+        if (nextOrderData) {
+            setOrderData(nextOrderData);
+        }
+    }, [fetchOrderData]);
 
     useEffect(() => {
-        loadOrderData();
-    }, [token]);
+        if (!token) return;
+
+        let ignore = false;
+
+        fetchOrderData().then((nextOrderData) => {
+            if (!ignore && nextOrderData) {
+                setOrderData(nextOrderData);
+            }
+        });
+
+        return () => {
+            ignore = true;
+        };
+    }, [fetchOrderData, token]);
+
+    const visibleOrders = token ? orderData : [];
 
     return (
         <div className="border-t pt-16">
@@ -55,7 +78,7 @@ const Orders = () => {
             </div>
 
             <div>
-                {orderData.map((item, index) => (
+                {visibleOrders.map((item, index) => (
                     <div
                         key={index}
                         className="py-4 border-t border-b text-gray-700 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
