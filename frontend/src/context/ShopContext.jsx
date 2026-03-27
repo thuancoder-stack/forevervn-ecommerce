@@ -1,4 +1,4 @@
-﻿import {
+import {
     createContext,
     useCallback,
     useEffect,
@@ -219,7 +219,12 @@ function mergeProducts(apiProducts = [], assetProducts = []) {
         mergedMap.set(normalized._id, normalized);
     });
 
-    return Array.from(mergedMap.values());
+    return Array.from(mergedMap.values()).sort((a, b) => {
+        const dateDiff = (Number(b?.date) || 0) - (Number(a?.date) || 0);
+        if (dateDiff !== 0) return dateDiff;
+
+        return String(a?.name || '').localeCompare(String(b?.name || ''));
+    });
 }
 
 const ShopContextProvider = ({ children }) => {
@@ -580,3 +585,4 @@ const ShopContextProvider = ({ children }) => {
 };
 
 export default ShopContextProvider;
+
