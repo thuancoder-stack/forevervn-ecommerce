@@ -100,4 +100,28 @@ const loginAdmin = async (req, res) => {
     }
 };
 
-export { loginUser, registerUser, getCurrentUser, loginAdmin };
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await userModel.find({}).select('-password');
+        res.json({ success: true, users });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.body;
+        if (!id) {
+            return res.json({ success: false, message: 'Missing user id' });
+        }
+        await userModel.findByIdAndDelete(id);
+        res.json({ success: true, message: 'User deleted' });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+export { loginUser, registerUser, getCurrentUser, loginAdmin, getAllUsers, deleteUser };
