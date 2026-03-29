@@ -1,12 +1,14 @@
 import React from 'react'
 import { Sidebar, Menu, MenuItem } from 'react-pro-sidebar'
 import { Link, useLocation } from 'react-router-dom'
-import { PlusCircle, List, Package } from 'lucide-react'
+import { PlusCircle, List, Package, LayoutDashboard, Users } from 'lucide-react'
 
 const navItems = [
-  { to: '/add',    icon: <PlusCircle size={18} />, label: 'Add Items'  },
-  { to: '/list',   icon: <List size={18} />,       label: 'List Items' },
-  { to: '/orders', icon: <Package size={18} />,    label: 'Orders'     },
+  { to: '/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard'  },
+  { to: '/customers', icon: <Users size={18} />,           label: 'Customers'  },
+  { to: '/add',       icon: <PlusCircle size={18} />,      label: 'Add Items'  },
+  { to: '/list',      icon: <List size={18} />,            label: 'List Items' },
+  { to: '/orders',    icon: <Package size={18} />,         label: 'Orders'     },
 ]
 
 const SidebarComponent = () => {

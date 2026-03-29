@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router-dom'
 import { assets } from '../assets/assets'
 import { backendUrl as defaultBackendUrl } from '../config'
 
 const List = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
+  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [removingId, setRemovingId] = useState('')
@@ -123,7 +125,7 @@ const List = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
       <p className='mb-4 text-xl font-semibold text-gray-800'>All Products List</p>
 
       <div className='w-full max-w-[1020px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-        <div className='grid grid-cols-[90px_2fr_1fr_1fr_90px] items-center border-b border-gray-200 bg-gradient-to-r from-gray-50 via-white to-gray-50 px-4 py-3 text-[13px] font-semibold text-gray-700'>
+        <div className='grid grid-cols-[90px_2fr_1fr_1fr_100px] items-center border-b border-gray-200 bg-gradient-to-r from-gray-50 via-white to-gray-50 px-4 py-3 text-[13px] font-semibold text-gray-700'>
           <span>Image</span>
           <span>Name</span>
           <span>Category</span>
@@ -143,7 +145,7 @@ const List = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
           visibleProducts.map((product, index) => (
             <div
               key={product.id}
-              className={`grid min-h-[76px] grid-cols-[90px_2fr_1fr_1fr_90px] items-center border-b border-gray-100 px-4 py-2 text-[13px] text-gray-700 transition-colors ${
+              className={`grid min-h-[76px] grid-cols-[90px_2fr_1fr_1fr_100px] items-center border-b border-gray-100 px-4 py-2 text-[13px] text-gray-700 transition-colors ${
                 index % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'
               } hover:bg-rose-50/50`}
             >
@@ -161,7 +163,13 @@ const List = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
               <span className='text-gray-600'>{product.category}</span>
               <span className='font-semibold text-emerald-700'>{currencyFormatter.format(product.price)}</span>
 
-              <div className='text-center'>
+              <div className='flex items-center justify-center gap-1'>
+                <button
+                  onClick={() => navigate(`/update/${product.id}`)}
+                  className='inline-flex h-8 w-12 items-center justify-center rounded-lg border border-transparent text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50'
+                >
+                  Edit
+                </button>
                 <button
                   onClick={() => handleRemove(product.id)}
                   disabled={removingId === product.id}

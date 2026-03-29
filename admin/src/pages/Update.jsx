@@ -1,13 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { useParams, useNavigate } from 'react-router-dom'
 import { assets } from '../assets/assets'
 import { backendUrl as defaultBackendUrl } from '../config'
 
 const DEFAULT_SIZES = ['S', 'M', 'L', 'XL', 'XXL']
-const MAX_IMAGE_SIZE_MB = 5
-const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
+const MAX_IMAGE_SIZE_MB = 10
+
+const Update = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
+  const { id } = useParams()
+  const navigate = useNavigate()
+
   const [images, setImages] = useState([null, null, null, null])
+  const [existingImages, setExistingImages] = useState([null, null, null, null])
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
@@ -17,6 +23,7 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
   const [sizes, setSizes] = useState([])
   const [customSize, setCustomSize] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingProd, setIsLoadingProd] = useState(true)
 
   const apiBaseUrl = useMemo(
     () => (backendUrlFromProps || defaultBackendUrl || '').trim().replace(/\/+$/, ''),
@@ -24,20 +31,56 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
   )
 
   const previewUrls = useMemo(
-    () => images.map((file) => (file ? URL.createObjectURL(file) : assets.upload_area)),
-    [images],
+    () => images.map((file, index) => (file ? URL.createObjectURL(file) : existingImages[index] || assets.upload_area)),
+    [images, existingImages],
   )
 
-  useEffect(
-    () => () => {
-      previewUrls.forEach((url) => {
-        if (typeof url === 'string' && url.startsWith('blob:')) {
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach((url, index) => {
+        if (typeof url === 'string' && url.startsWith('blob:') && images[index]) {
           URL.revokeObjectURL(url)
         }
       })
-    },
-    [previewUrls],
-  )
+    }
+  }, [previewUrls, images])
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!apiBaseUrl || !id) return
+      setIsLoadingProd(true)
+      try {
+        const { data } = await axios.post(`${apiBaseUrl}/api/product/single`, { productId: id })
+        if (data?.success && data?.product) {
+          const p = data.product
+          setName(p.name || '')
+          setDescription(p.description || '')
+          setPrice(p.price || '')
+          setCategory(p.category || 'Men')
+          setSubCategory(p.subCategory || 'Topwear')
+          setBestseller(p.bestseller || false)
+          setSizes(p.sizes || [])
+          
+          if (Array.isArray(p.image)) {
+            const loadedImages = [null, null, null, null]
+            p.image.forEach((imgUrl, i) => {
+              if (i < 4) loadedImages[i] = imgUrl
+            })
+            setExistingImages(loadedImages)
+          }
+        } else {
+          toast.error(data?.message || 'Could not load product details')
+          navigate('/list')
+        }
+      } catch (error) {
+        toast.error(error.message || 'Error loading product')
+      } finally {
+        setIsLoadingProd(false)
+      }
+    }
+    fetchProduct()
+  }, [apiBaseUrl, id, navigate])
+
   const setImageAt = (index, file) => {
     setImages((prev) => prev.map((item, i) => (i === index ? file : item)))
   }
@@ -77,19 +120,7 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
     setSizes((prev) => (prev.includes(size) ? prev : [...prev, size]))
     setCustomSize('')
   }
-
-  const resetForm = () => {
-    setImages([null, null, null, null])
-    setName('')
-    setDescription('')
-    setPrice('')
-    setCategory('Men')
-    setSubCategory('Topwear')
-    setBestseller(false)
-    setSizes([])
-    setCustomSize('')
-  }
-
+  
   const onSubmitHandler = async (event) => {
     event.preventDefault()
     if (isSubmitting) return
@@ -101,11 +132,6 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
 
     if (!token) {
       toast.error('Token khong hop le, vui long dang nhap lai')
-      return
-    }
-
-    if (!images.some(Boolean)) {
-      toast.error('Vui long chon it nhat 1 anh san pham')
       return
     }
 
@@ -124,6 +150,7 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
 
     try {
       const formData = new FormData()
+      formData.append('productId', id)
       formData.append('name', name.trim())
       formData.append('description', description.trim())
       formData.append('price', numericPrice)
@@ -132,20 +159,22 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
       formData.append('bestseller', bestseller)
       formData.append('sizes', JSON.stringify(sizes))
 
+      let hasNewImages = false
       images.forEach((file, index) => {
         if (file) {
+          hasNewImages = true
           formData.append(`image${index + 1}`, file)
         }
       })
 
-      const { data } = await axios.post(`${apiBaseUrl}/api/product/add`, formData, {
+      const { data } = await axios.post(`${apiBaseUrl}/api/product/update`, formData, {
         headers: { token },
         timeout: 20000,
       })
 
       if (data?.success) {
-        toast.success(data.message || 'Product added')
-        resetForm()
+        toast.success(data.message || 'Product updated')
+        navigate('/list')
       } else {
         if ((data?.message || '').toLowerCase().includes('not authorized')) {
           toast.error('Phien dang nhap het han, vui long dang nhap lai')
@@ -161,69 +190,86 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
       if (isNetworkError) {
         toast.error(`Khong ket noi backend ${apiBaseUrl}. Hay bat backend va kiem tra CORS.`)
       } else {
-        toast.error(error.response?.data?.message || error.message || 'Them san pham that bai')
+        toast.error(error.response?.data?.message || error.message || 'Cap nhat san pham that bai')
       }
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  if (isLoadingProd) {
+    return <div className="p-6 text-sm text-gray-500">Loading product data...</div>
+  }
+
   return (
     <form onSubmit={onSubmitHandler} className='flex w-full flex-col items-start gap-4 p-6'>
-      <div>
-        <p className='mb-2 font-medium '>Upload Image</p>
-        <div className='flex flex-wrap gap-2'>
-          {images.map((file, index) => (
-            <div
-              key={`image-${index}`}
-              className='flex flex-col items-center gap-1'
-              style={{ width: '110px' }}
-            >
-              <label
-                htmlFor={`image${index + 1}`}
-                className='cursor-pointer'
-                style={{ display: 'block', width: '110px', height: '110px' }}
-              >
-                <div
-                  className='overflow-hidden rounded-md border-2 border-dashed border-gray-300 bg-gray-50'
-                  style={{ width: '100%', height: '100%' }}
-                >
-                  <img
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: file ? 'contain' : 'cover',
-                      padding: file ? '4px' : '0',
-                    }}
-                    src={previewUrls[index]}
-                    alt={`image-${index + 1}`}
-                  />
-                </div>
-              </label>
-              <input
-                onChange={(event) => handleImageChange(index, event)}
-                type='file'
-                id={`image${index + 1}`}
-                hidden
-                accept='image/*'
-              />
-              {file ? (
-                <button
-                  type='button'
-                  onClick={() => setImageAt(index, null)}
-                  className='text-xs text-red-500 hover:text-red-600'
-                >
-                  Remove
-                </button>
-              ) : (
-                <span className='text-[10px] text-gray-400'>Max {MAX_IMAGE_SIZE_MB}MB</span>
-              )}
-            </div>
-          ))}
-        </div>
+      <div className="mb-2">
+        <p className="text-xl font-semibold text-gray-800">Update Product</p>
+        <p className="text-sm text-gray-500">Edit product information</p>
       </div>
 
-      <div className='w-full max-w-[500px]'>
+      <div>
+        <p className='mb-2 font-medium '>Product Images</p>
+        <div className='flex flex-wrap gap-2'>
+          {images.map((file, index) => {
+            const hasImage = file || existingImages[index]
+            return (
+              <div
+                key={`image-${index}`}
+                className='flex flex-col items-center gap-1'
+                style={{ width: '110px' }}
+              >
+                <label
+                  htmlFor={`image${index + 1}`}
+                  className='cursor-pointer'
+                  style={{ display: 'block', width: '110px', height: '110px' }}
+                >
+                  <div
+                    className='overflow-hidden rounded-md border-2 border-dashed border-gray-300 bg-gray-50'
+                    style={{ width: '100%', height: '100%' }}
+                  >
+                    <img
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: hasImage ? 'contain' : 'cover',
+                        padding: hasImage ? '4px' : '0',
+                      }}
+                      src={previewUrls[index]}
+                      alt={`image-${index + 1}`}
+                    />
+                  </div>
+                </label>
+                <input
+                  onChange={(event) => handleImageChange(index, event)}
+                  type='file'
+                  id={`image${index + 1}`}
+                  hidden
+                  accept='image/*'
+                />
+                {file ? (
+                  <button
+                    type='button'
+                    onClick={() => setImageAt(index, null)}
+                    className='text-xs text-red-500 hover:text-red-600'
+                  >
+                    Remove File
+                  </button>
+                ) : existingImages[index] ? (
+                  <span className='text-[10px] text-gray-400'>Current Image {index+1}</span>
+                ) : (
+                  <span className='text-[10px] text-gray-400'>Max {MAX_IMAGE_SIZE_MB}MB</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+        <p className="text-[12px] text-gray-500 mt-2 max-w-[500px]">
+          Note: Uploading any new image will replace the entire product image gallery in the database. Leave empty to keep existing images.
+        </p>
+      </div>
+
+      <div className='w-full max-w-[500px] mt-2'>
         <p className='mb-2 font-medium'>Product Name</p>
         <input
           value={name}
@@ -360,15 +406,24 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
         </label>
       </div>
 
-      <button
-        type='submit'
-        disabled={isSubmitting}
-        className='rounded bg-pink-500 px-8 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-60'
-      >
-        {isSubmitting ? 'ADDING...' : 'ADD PRODUCT'}
-      </button>
+      <div className="flex items-center gap-3 w-full max-w-[500px]">
+        <button
+          type='button'
+          onClick={() => navigate('/list')}
+          className='rounded border border-gray-300 bg-white px-8 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50'
+        >
+          CANCEL
+        </button>
+        <button
+          type='submit'
+          disabled={isSubmitting}
+          className='rounded bg-pink-500 px-8 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-60 flex-1'
+        >
+          {isSubmitting ? 'SAVING...' : 'SAVE CHANGES'}
+        </button>
+      </div>
     </form>
   )
 }
 
-export default Add
+export default Update

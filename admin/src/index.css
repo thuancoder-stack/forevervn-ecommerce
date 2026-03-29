@@ -1,22 +1,282 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Public+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ================= ROOT ================= */
+:root {
+  --border: rgba(15, 23, 42, 0.08);
+
+  --admin-bg: #f7f4ef;
+  --admin-surface: #ffffff;
+  --admin-surface-soft: #f8fafc;
+  --admin-surface-muted: #efedee;
+  --admin-border: #e6e6ea;
+
+  --admin-text: #1b1c1d;
+  --admin-muted: #667085;
+
+  --admin-accent: #1f3654;
+  --admin-accent-hover: #172a44;
+  --admin-accent-soft: #edf4fb;
+
+  --admin-primary-text: #ffffff;
+
+  --admin-tertiary: #6d5e00;
+  --admin-success: #15803d;
+  --admin-warning: #b45309;
+  --admin-danger: #b91c1c;
+
+  /* NEW LUXURY */
+  --admin-gradient-primary: linear-gradient(135deg, #b7004d 0%, #ff4d88 100%);
+  --admin-gradient-soft: linear-gradient(135deg, #fdf2f5 0%, #f8fafc 100%);
+
+  --admin-glass: rgba(255, 255, 255, 0.65);
+  --admin-glass-border: rgba(255, 255, 255, 0.4);
+
+  --admin-radius-xl: 1.75rem;
+  --admin-radius-2xl: 2.25rem;
+
+  --admin-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 10px 30px rgba(15, 23, 42, 0.04);
+
+  --admin-shadow-soft:
+    0 10px 30px rgba(15, 23, 42, 0.06),
+    0 2px 6px rgba(15, 23, 42, 0.04);
+
+  --admin-shadow-hover:
+    0 20px 50px rgba(15, 23, 42, 0.12),
+    0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* ================= DARK MODE ================= */
+.dark {
+  --border: rgba(255, 255, 255, 0.12);
+
+  --admin-bg: #101214;
+  --admin-surface: #171a1d;
+  --admin-surface-soft: #1e2226;
+  --admin-surface-muted: #262c33;
+  --admin-border: #2d3440;
+
+  --admin-text: #f3f4f6;
+  --admin-muted: #a2a8b0;
+
+  --admin-accent: #8eb2ff;
+  --admin-accent-hover: #9dbbff;
+  --admin-accent-soft: rgba(142, 178, 255, 0.12);
+
+  --admin-primary-text: #07101f;
+
+  --admin-tertiary: #e6cf63;
+  --admin-success: #4ade80;
+  --admin-warning: #f59e0b;
+  --admin-danger: #f87171;
+
+  --admin-glass: rgba(23, 26, 29, 0.6);
+  --admin-glass-border: rgba(255, 255, 255, 0.08);
+
+  background: linear-gradient(180deg, #0b0d0f 0%, #111418 100%);
+  color-scheme: dark;
+}
+
+/* ================= GLOBAL ================= */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--admin-text);
+
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 183, 200, 0.25), transparent 40%),
+    radial-gradient(circle at 90% 0%, rgba(180, 210, 255, 0.2), transparent 35%),
+    linear-gradient(180deg, #fffdfc 0%, #f7f4ef 50%, #eef3f8 100%);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at bottom left, rgba(244, 235, 225, 0.8), transparent 40%),
+    radial-gradient(circle at center right, rgba(233, 240, 248, 0.85), transparent 35%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
 * {
+  box-sizing: border-box;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea,
+a {
+  transition: all 0.2s ease;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+::selection {
+  background: rgba(183, 0, 77, 0.2);
+}
+
+/* ================= TYPOGRAPHY ================= */
+.display-font {
   font-family: 'Outfit', sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root { color-scheme: dark; }
-}
-select, input, textarea {
-    border: 1px solid #c2c2c2;
-    outline-color: #C586A5;
-    border-radius: 4px;
+.font-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.dark body {
-  background-color: #030712;
+/* ================= LAYOUT ================= */
+.page-shell,
+.admin-shell {
+  width: min(100% - 1.5rem, 1440px);
+  margin-inline: auto;
+}
+
+/* ================= CARD ================= */
+.admin-card {
+  border: 1px solid var(--admin-border);
+  background: var(--admin-glass);
+  backdrop-filter: blur(18px);
+
+  border-radius: var(--admin-radius-xl);
+  box-shadow: var(--admin-shadow-soft);
+}
+
+.admin-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--admin-shadow-hover);
+}
+
+/* ================= PANEL ================= */
+.admin-panel {
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface-soft);
+  border-radius: 1.25rem;
+}
+
+/* ================= GLASS ================= */
+.admin-glass {
+  background: var(--admin-glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--admin-glass-border);
+  border-radius: var(--admin-radius-xl);
+}
+
+/* ================= INPUT ================= */
+.admin-input,
+.admin-select,
+.admin-textarea {
+  width: 100%;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  outline: none;
+}
+
+.admin-input:focus,
+.admin-select:focus,
+.admin-textarea:focus {
+  border-color: #b7004d;
+  box-shadow: 0 0 0 4px rgba(183, 0, 77, 0.1);
+}
+
+/* ================= BUTTON ================= */
+.admin-primary-btn {
+  background: var(--admin-gradient-primary);
+  color: white;
+  border-radius: 999px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+
+  box-shadow: 0 12px 30px rgba(183, 0, 77, 0.25);
+}
+
+.admin-primary-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 18px 40px rgba(183, 0, 77, 0.35);
+}
+
+.admin-secondary-btn {
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-radius: 999px;
+  padding: 0.5rem 1.25rem;
+}
+
+.admin-secondary-btn:hover {
+  background: var(--admin-surface-soft);
+}
+
+/* ================= SCROLLBAR ================= */
+.admin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+
+.admin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #d1d5db, #9ca3af);
+  border-radius: 999px;
+}
+
+/* ================= UTIL ================= */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.glow {
+  box-shadow:
+    0 0 0 1px rgba(183, 0, 77, 0.1),
+    0 10px 30px rgba(183, 0, 77, 0.15);
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+}
+
+.smooth {
+  transition: all 0.25s ease;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (min-width: 640px) {
+  .page-shell,
+  .admin-shell {
+    width: min(100% - 3rem, 1440px);
+  }
 }
