@@ -6,7 +6,7 @@ function formatVndPrice(price) {
     return `${n.toLocaleString('vi-VN')} VNĐ`;
 }
 
-const ProductItem = ({ id, image, name, price }) => {
+const ProductItem = ({ id, image, name, price, oldPrice }) => {
     const imageSrc = Array.isArray(image)
         ? image[0]
         : image || 'https://dummyimage.com/600x800/e5e7eb/6b7280&text=No+Image';
@@ -17,7 +17,12 @@ const ProductItem = ({ id, image, name, price }) => {
             to={`/product/${id}`}
         >
             <article className="section-shell h-full overflow-hidden rounded-[24px] border-white/70 bg-white/90">
-                <div className="overflow-hidden bg-slate-50">
+                <div className="relative overflow-hidden bg-slate-50">
+                    {oldPrice > price && (
+                        <div className="absolute top-3 left-3 z-10 rounded-full bg-rose-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg">
+                            SALE
+                        </div>
+                    )}
                     <img
                         className="aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
                         src={imageSrc}
@@ -40,9 +45,16 @@ const ProductItem = ({ id, image, name, price }) => {
                         </span>
                     </div>
 
-                    <p className="text-sm font-semibold text-slate-900 sm:text-base">
-                        {formatVndPrice(price)}
-                    </p>
+                    <div className="flex flex-wrap items-baseline gap-2">
+                        <p className="text-sm font-bold text-slate-900 sm:text-base">
+                            {formatVndPrice(price)}
+                        </p>
+                        {oldPrice > price && (
+                            <p className="text-xs text-slate-400 line-through">
+                                {formatVndPrice(oldPrice)}
+                            </p>
+                        )}
+                    </div>
                 </div>
             </article>
         </Link>

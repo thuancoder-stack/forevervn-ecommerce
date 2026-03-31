@@ -11,6 +11,7 @@ const STATUS_DOT_STYLES = {
   Shipped: 'bg-violet-500',
   'Out for Delivery': 'bg-orange-500',
   Delivered: 'bg-emerald-500',
+  Cancelled: 'bg-rose-500',
 }
 
 function mapOrdersToItems(orders = []) {
@@ -128,6 +129,32 @@ const Orders = () => {
     },
     [backendUrl, handleUnauthorized, token],
   )
+  
+  const handleCancelOrder = async (orderId) => {
+    if (!token || !orderId) return;
+    
+    if (!window.confirm('Bạn có chắc chắn muốn huỷ đơn hàng này không?')) return;
+
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        `${backendUrl}/api/order/cancel`,
+        { orderId },
+        { headers: { token } }
+      );
+
+      if (response?.data?.success) {
+        toast.success('Đã huỷ đơn hàng thành công');
+        fetchOrderData({ silent: true });
+      } else {
+        toast.error(response?.data?.message || 'Không thể huỷ đơn hàng');
+      }
+    } catch (error) {
+       toast.error(error?.response?.data?.message || 'Lỗi khi huỷ đơn hàng');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadOrderData = useCallback(() => {
     fetchOrderData()
@@ -251,6 +278,15 @@ const Orders = () => {
                     </p>
                     <p>Quantity: {item.quantity}</p>
                     <p>Size: {item.size || 'Free'}</p>
+                    {item.color && (
+                      <p className='flex items-center gap-1.5'>
+                        <span
+                          className='inline-block h-3 w-3 rounded-full border border-slate-200'
+                          style={{ backgroundColor: item.color.toLowerCase() }}
+                        />
+                        {item.color}
+                      </p>
+                    )}
                   </div>
 
                   <p className='mt-2 text-sm text-slate-500'>
@@ -282,6 +318,16 @@ const Orders = () => {
                 >
                   Track Order
                 </button>
+                
+                {(item.status === 'Order Placed' || item.status === 'Packing') && (
+                  <button
+                    onClick={() => handleCancelOrder(item.orderId)}
+                    className='rounded-full border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-500 hover:text-white'
+                    type='button'
+                  >
+                    Huỷ đơn hàng
+                  </button>
+                )}
               </div>
             </article>
           ))

@@ -16,7 +16,7 @@ const parsePrice = (price) => {
 };
 
 const Collection = () => {
-    const { products, search, setSearch } = useContext(ShopContext);
+    const { products, search, setSearch, categories, subCategories } = useContext(ShopContext);
 
     const [showFilter, setShowFilter] = useState(false);
     const [category, setCategory] = useState([]);
@@ -25,6 +25,7 @@ const Collection = () => {
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
     const [onlyBestSeller, setOnlyBestSeller] = useState(false);
+    const [expandedCategories, setExpandedCategories] = useState({}); // Track open/closed cats
 
     const STEP = 16;
     const [visibleCount, setVisibleCount] = useState(STEP);
@@ -42,8 +43,7 @@ const Collection = () => {
         products,
     ]);
 
-    const toggleCategory = (e) => {
-        const value = e.target.value;
+    const toggleCategory = (value) => {
         setCategory((prev) =>
             prev.includes(value)
                 ? prev.filter((x) => x !== value)
@@ -51,8 +51,14 @@ const Collection = () => {
         );
     };
 
-    const toggleSubCategory = (e) => {
-        const value = e.target.value;
+    const toggleExpandCategory = (catName) => {
+        setExpandedCategories(prev => ({
+            ...prev,
+            [catName]: !prev[catName]
+        }));
+    };
+
+    const toggleSubCategory = (value) => {
         setSubCategory((prev) =>
             prev.includes(value)
                 ? prev.filter((x) => x !== value)
@@ -68,6 +74,7 @@ const Collection = () => {
         setMinPrice('');
         setMaxPrice('');
         setOnlyBestSeller(false);
+        setExpandedCategories({});
     };
 
     const filteredAndSorted = useMemo(() => {
@@ -239,43 +246,74 @@ const Collection = () => {
                                 </label>
                             </div>
 
+                            {/* Hierarchical Categories + Sub-categories */}
                             <div className="rounded-[24px] border border-[var(--border)] bg-white p-4">
                                 <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
                                     Categories
                                 </p>
 
-                                <div className="space-y-3 text-sm text-slate-600">
-                                    {['Men', 'Women', 'Kids'].map((item) => (
-                                        <label key={item} className="flex items-center gap-3">
-                                            <input
-                                                type="checkbox"
-                                                value={item}
-                                                onChange={toggleCategory}
-                                                checked={category.includes(item)}
-                                            />
-                                            {item}
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
+                                <div className="space-y-0.5 text-sm text-slate-600">
+                                    {(categories.length === 0
+                                        ? ['Nam', 'Nữ', 'Trẻ em', 'Phụ kiện'].map(n => ({ _id: n, name: n, _static: true }))
+                                        : categories
+                                    ).map((cat) => {
+                                        const catSubs = cat._static ? [] : subCategories.filter(
+                                            (s) => s.categoryId?._id === cat._id || s.categoryId === cat._id
+                                        );
+                                        const isExpanded = expandedCategories[cat.name];
+                                        const isChecked = category.includes(cat.name);
 
-                            <div className="rounded-[24px] border border-[var(--border)] bg-white p-4">
-                                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    Type
-                                </p>
+                                        return (
+                                            <div key={cat._id}>
+                                                {/* Category row */}
+                                                <div className="flex items-center gap-1 rounded-xl hover:bg-slate-50">
+                                                    <label className="flex flex-1 cursor-pointer items-center gap-3 px-2 py-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            value={cat.name}
+                                                            onChange={() => toggleCategory(cat.name)}
+                                                            checked={isChecked}
+                                                            className="accent-slate-900"
+                                                        />
+                                                        <span className={`flex-1 font-medium ${isChecked ? 'text-slate-900' : ''}`}>
+                                                            {cat.name}
+                                                        </span>
+                                                    </label>
+                                                    {catSubs.length > 0 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleExpandCategory(cat.name)}
+                                                            className="mr-1 flex h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors text-base font-bold leading-none"
+                                                            title={isExpanded ? 'Thu gọn' : 'Xem danh mục con'}
+                                                        >
+                                                            {isExpanded ? '−' : '+'}
+                                                        </button>
+                                                    )}
+                                                </div>
 
-                                <div className="space-y-3 text-sm text-slate-600">
-                                    {['Topwear', 'Bottomwear', 'Winterwear'].map((item) => (
-                                        <label key={item} className="flex items-center gap-3">
-                                            <input
-                                                type="checkbox"
-                                                value={item}
-                                                onChange={toggleSubCategory}
-                                                checked={subCategory.includes(item)}
-                                            />
-                                            {item}
-                                        </label>
-                                    ))}
+                                                {/* Sub-categories — shown when expanded */}
+                                                {isExpanded && catSubs.length > 0 && (
+                                                    <div className="ml-6 mt-0.5 mb-1 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                                                        {catSubs.map((sub) => (
+                                                            <label
+                                                                key={sub._id}
+                                                                className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-slate-50"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    value={sub.name}
+                                                                    onChange={() => toggleSubCategory(sub.name)}
+                                                                    checked={subCategory.includes(sub.name)}
+                                                                    className="accent-slate-700"
+                                                                />
+                                                                <span className="text-slate-500">{sub.name}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>

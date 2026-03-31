@@ -1,20 +1,19 @@
-import React, { useContext, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { ShopContext } from '../context/ShopContext';
 import Title from '../components/Title';
+import { getRegionByProvince, getShippingFeeByRegion } from '../data/regions';
 
 const initialAddress = {
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
-    street: '',
-    city: '',
-    state: '',
-    zipcode: '',
-    country: '',
-    phone: ''
+    phone: '',
+    province: '',
+    district: '',
+    ward: '',
+    addressDetail: ''
 };
 
 const PlaceOrder = () => {
@@ -26,12 +25,90 @@ const PlaceOrder = () => {
         currency,
         backendUrl,
         token,
-        updateCartQty
+        updateCartQty,
+        appliedVoucher,
+        getDiscountAmount,
+        setDeliveryFee
     } = useContext(ShopContext);
 
     const navigate = useNavigate();
     const [formData, setFormData] = useState(initialAddress);
     const [loading, setLoading] = useState(false);
+    
+    // Cascading address state 
+    const [provinces, setProvinces] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [wards, setWards] = useState([]);
+
+    const [selectedProv, setSelectedProv] = useState('');
+    const [selectedDist, setSelectedDist] = useState('');
+    const [selectedWard, setSelectedWard] = useState('');
+
+    useEffect(() => {
+        const fetchProvinces = async () => {
+            try {
+                const { data } = await axios.get('https://provinces.open-api.vn/api/p/');
+                setProvinces(data);
+            } catch (err) {
+                console.error('Error fetching provinces:', err);
+            }
+        };
+        fetchProvinces();
+    }, []);
+
+    const onProvinceChange = async (e) => {
+        const provCode = e.target.value;
+        const provName = provinces.find(p => p.code == provCode)?.name || '';
+        
+        setSelectedProv(provCode);
+        setSelectedDist('');
+        setSelectedWard('');
+        setDistricts([]);
+        setWards([]);
+
+        setFormData(prev => ({ ...prev, province: provName }));
+
+        // Update shipping fee
+        const region = getRegionByProvince(provName);
+        const fee = getShippingFeeByRegion(region);
+        setDeliveryFee(fee);
+
+        if (provCode) {
+            try {
+                const { data } = await axios.get(`https://provinces.open-api.vn/api/p/${provCode}?depth=2`);
+                setDistricts(data.districts || []);
+            } catch (err) {
+                console.error('Error fetching districts:', err);
+            }
+        }
+    };
+
+    const onDistrictChange = async (e) => {
+        const distCode = e.target.value;
+        const distName = districts.find(d => d.code == distCode)?.name || '';
+        
+        setSelectedDist(distCode);
+        setSelectedWard('');
+        setWards([]);
+
+        setFormData(prev => ({ ...prev, district: distName }));
+
+        if (distCode) {
+            try {
+                const { data } = await axios.get(`https://provinces.open-api.vn/api/d/${distCode}?depth=2`);
+                setWards(data.wards || []);
+            } catch (err) {
+                console.error('Error fetching wards:', err);
+            }
+        }
+    };
+
+    const onWardChange = (e) => {
+        const wardCode = e.target.value;
+        const wardName = wards.find(w => w.code == wardCode)?.name || '';
+        setSelectedWard(wardCode);
+        setFormData(prev => ({ ...prev, ward: wardName }));
+    };
 
     const orderItems = useMemo(() => {
         const items = [];
@@ -41,25 +118,23 @@ const PlaceOrder = () => {
                 (product) => String(product._id || product.id) === String(itemId)
             );
 
-            if (!productInfo) {
-                continue;
-            }
+            if (!productInfo) continue;
 
             for (const size in cartItems[itemId]) {
-                const quantity = Number(cartItems[itemId][size]) || 0;
+                for (const color in cartItems[itemId][size]) {
+                    const quantity = Number(cartItems[itemId][size][color]) || 0;
+                    if (quantity <= 0) continue;
 
-                if (quantity <= 0) {
-                    continue;
+                    items.push({
+                        _id: productInfo._id,
+                        name: productInfo.name,
+                        price: productInfo.price,
+                        image: productInfo.image,
+                        size,
+                        color: color === 'Any' ? '' : color,
+                        quantity
+                    });
                 }
-
-                items.push({
-                    _id: productInfo._id,
-                    name: productInfo.name,
-                    price: productInfo.price,
-                    image: productInfo.image,
-                    size,
-                    quantity
-                });
             }
         }
 
@@ -74,7 +149,9 @@ const PlaceOrder = () => {
     const clearLocalCart = () => {
         for (const itemId in cartItems) {
             for (const size in cartItems[itemId]) {
-                updateCartQty(itemId, size, 0);
+                for (const color in cartItems[itemId][size]) {
+                    updateCartQty(itemId, size, color, 0);
+                }
             }
         }
     };
@@ -103,7 +180,9 @@ const PlaceOrder = () => {
             const payload = {
                 address: formData,
                 items: orderItems,
-                amount: getCartAmount() + delivery_fee
+                amount: getCartAmount() - getDiscountAmount() + delivery_fee,
+                discount: getDiscountAmount(),
+                voucherCode: appliedVoucher ? appliedVoucher.code : ''
             };
 
             const response = await axios.post(
@@ -144,21 +223,12 @@ const PlaceOrder = () => {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                     <input
-                        name="firstName"
-                        value={formData.firstName}
+                        name="fullName"
+                        value={formData.fullName}
                         onChange={handleChange}
-                        className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
+                        className="sm:col-span-2 rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
                         type="text"
-                        placeholder="First name"
-                        required
-                    />
-                    <input
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
-                        type="text"
-                        placeholder="Last name"
+                        placeholder="Họ và tên"
                         required
                     />
                     <input
@@ -170,58 +240,57 @@ const PlaceOrder = () => {
                         placeholder="Email address"
                         required
                     />
-                    <input
-                        name="street"
-                        value={formData.street}
-                        onChange={handleChange}
-                        className="sm:col-span-2 rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
-                        type="text"
-                        placeholder="Street"
+                    
+                    {/* Multi-select for Vietnam address */}
+                    <select
+                        value={selectedProv}
+                        onChange={onProvinceChange}
+                        className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none bg-white"
                         required
-                    />
-                    <input
-                        name="city"
-                        value={formData.city}
-                        onChange={handleChange}
-                        className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
-                        type="text"
-                        placeholder="City"
+                    >
+                        <option value="">Chọn Tỉnh / Thành</option>
+                        {provinces.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+                    </select>
+
+                    <select
+                        value={selectedDist}
+                        onChange={onDistrictChange}
+                        disabled={!selectedProv}
+                        className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none bg-white disabled:opacity-50"
                         required
-                    />
-                    <input
-                        name="state"
-                        value={formData.state}
-                        onChange={handleChange}
-                        className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
-                        type="text"
-                        placeholder="State"
+                    >
+                        <option value="">Chọn Quận / Huyện</option>
+                        {districts.map(d => <option key={d.code} value={d.code}>{d.name}</option>)}
+                    </select>
+
+                    <select
+                        value={selectedWard}
+                        onChange={onWardChange}
+                        disabled={!selectedDist}
+                        className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none bg-white disabled:opacity-50"
                         required
-                    />
+                    >
+                        <option value="">Chọn Xã / Phường</option>
+                        {wards.map(w => <option key={w.code} value={w.code}>{w.name}</option>)}
+                    </select>
+
                     <input
-                        name="zipcode"
-                        value={formData.zipcode}
-                        onChange={handleChange}
-                        className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
-                        type="text"
-                        placeholder="Zipcode"
-                        required
-                    />
-                    <input
-                        name="country"
-                        value={formData.country}
+                        name="addressDetail"
+                        value={formData.addressDetail}
                         onChange={handleChange}
                         className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
                         type="text"
-                        placeholder="Country"
+                        placeholder="Số nhà, tên đường"
                         required
                     />
+
                     <input
                         name="phone"
                         value={formData.phone}
                         onChange={handleChange}
                         className="sm:col-span-2 rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
                         type="text"
-                        placeholder="Phone"
+                        placeholder="Số điện thoại"
                         required
                     />
                 </div>
@@ -233,15 +302,25 @@ const PlaceOrder = () => {
 
                     <div className="mt-6 space-y-4 text-sm text-slate-600">
                         <div className="flex justify-between">
-                            <p>Subtotal</p>
+                            <p>Tạm tính</p>
                             <p>
                                 {currency}
                                 {getCartAmount().toLocaleString('vi-VN')} VND
                             </p>
                         </div>
 
+                        {appliedVoucher && (
+                            <div className="flex justify-between text-emerald-600 font-medium">
+                                <p>Giảm giá ({appliedVoucher.discountPercent}%)</p>
+                                <p>
+                                    -{currency}
+                                    {getDiscountAmount().toLocaleString('vi-VN')} VND
+                                </p>
+                            </div>
+                        )}
+
                         <div className="flex justify-between">
-                            <p>Shipping Fee</p>
+                            <p>Phí giao hàng</p>
                             <p>
                                 {currency}
                                 {delivery_fee.toLocaleString('vi-VN')} VND
@@ -250,10 +329,10 @@ const PlaceOrder = () => {
 
                         <div className="rounded-[22px] bg-slate-900 px-5 py-4 text-base font-semibold text-white">
                             <div className="flex justify-between">
-                                <p>Total</p>
+                                <p>Tổng cộng</p>
                                 <p>
                                     {currency}
-                                    {(getCartAmount() + delivery_fee).toLocaleString('vi-VN')} VND
+                                    {(getCartAmount() - getDiscountAmount() + delivery_fee).toLocaleString('vi-VN')} VND
                                 </p>
                             </div>
                         </div>

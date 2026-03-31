@@ -5,7 +5,6 @@ import {
     useMemo,
     useState,
 } from 'react';
-import { products as localProducts } from '../assets/assets'; // CHANGE: doi ten import de khong trung voi state products
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -75,20 +74,28 @@ function normalizeCartData(cartValue) {
 
     for (const itemId in cartValue) {
         const sizeMap = cartValue[itemId];
-
-        if (!sizeMap || typeof sizeMap !== 'object' || Array.isArray(sizeMap)) {
-            continue;
-        }
+        if (!sizeMap || typeof sizeMap !== 'object' || Array.isArray(sizeMap)) continue;
 
         for (const size in sizeMap) {
-            const qty = Number(sizeMap[size]);
-            if (!Number.isFinite(qty) || qty <= 0) continue;
-
-            if (!normalized[itemId]) {
-                normalized[itemId] = {};
+            const colorMap = sizeMap[size];
+            // Backward compatibility: if colorMap is a number, wrap it in 'Any'
+            if (typeof colorMap === 'number') {
+                if (!normalized[itemId]) normalized[itemId] = {};
+                if (!normalized[itemId][size]) normalized[itemId][size] = {};
+                normalized[itemId][size]['Any'] = colorMap;
+                continue;
             }
 
-            normalized[itemId][size] = qty;
+            if (!colorMap || typeof colorMap !== 'object' || Array.isArray(colorMap)) continue;
+
+            for (const color in colorMap) {
+                const qty = Number(colorMap[color]);
+                if (!Number.isFinite(qty) || qty <= 0) continue;
+
+                if (!normalized[itemId]) normalized[itemId] = {};
+                if (!normalized[itemId][size]) normalized[itemId][size] = {};
+                normalized[itemId][size][color] = qty;
+            }
         }
     }
 
@@ -199,7 +206,10 @@ function normalizeProduct(item, fallbackId = '') {
         subCategory: String(item?.subCategory ?? ''),
         image: normalizeImages(item?.image),
         sizes: normalizeSizes(item?.sizes),
+        colors: Array.isArray(item?.colors) ? item.colors : [],
+        videoUrl: String(item?.videoUrl ?? ''),
         price: parseVndPrice(item?.price),
+        oldPrice: parseVndPrice(item?.oldPrice),
         date: Number(item?.date) || 0,
         bestseller: Boolean(item?.bestseller),
     };
@@ -229,15 +239,59 @@ function mergeProducts(apiProducts = [], assetProducts = []) {
 
 const ShopContextProvider = ({ children }) => {
     const currency = '';
-    const delivery_fee = 30000;
-
+    
     // CHANGE: them fallback backend URL khi frontend chua co .env
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+
+    const [delivery_fee, setDeliveryFee] = useState(30000);
+    const [vouchers, setVouchers] = useState([]);
+    const [appliedVoucher, setAppliedVoucher] = useState(null);
 
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]); // NEW
+    const [subCategories, setSubCategories] = useState([]); // NEW
+    const [banners, setBanners] = useState([]);
     const [token, setToken] = useState(() => getInitialToken());
+
+    const getBanners = async () => {
+        try {
+            const response = await axios.get(backendUrl + '/api/banner/list');
+            if (response.data.success) {
+                setBanners(response.data.banners.filter(b => b.status));
+            }
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
+    const getReviews = async (productId) => {
+        try {
+            const response = await axios.get(backendUrl + `/api/review-user/list?productId=${productId}`);
+            if (response.data.success) {
+                return response.data.reviews;
+            }
+            return [];
+        } catch (error) {
+            console.log(error);
+            return [];
+        }
+    };
+
+    const addReview = async (formData) => {
+        try {
+            const response = await axios.post(backendUrl + '/api/review-user/add', formData);
+            return response.data;
+        } catch (error) {
+            console.log(error);
+            return { success: false, message: error.message };
+        }
+    };
+
+    useEffect(() => {
+        getBanners();
+    }, []);
 
     // CHANGE: cart khoi tao theo dung user token hien tai
     const [cartItems, setCartItems] = useState(() => {
@@ -363,7 +417,7 @@ const ShopContextProvider = ({ children }) => {
     }, [cartItems, isCartHydrated, syncCartToDatabase, token]);
 
     // CHANGE: cart update theo functional setState de tranh stale state
-    const addToCart = useCallback((itemId, size) => {
+    const addToCart = useCallback((itemId, size, color = 'Any') => {
         if (!itemId || !size) return;
 
         setCartItems((prev) => {
@@ -372,22 +426,28 @@ const ShopContextProvider = ({ children }) => {
             if (!cartData[itemId]) {
                 cartData[itemId] = {};
             }
+            if (!cartData[itemId][size]) {
+                cartData[itemId][size] = {};
+            }
 
-            cartData[itemId][size] = (Number(cartData[itemId][size]) || 0) + 1;
+            cartData[itemId][size][color] = (Number(cartData[itemId][size][color]) || 0) + 1;
             return cartData;
         });
     }, []);
 
-    const removeFromCart = useCallback((itemId, size) => {
+    const removeFromCart = useCallback((itemId, size, color = 'Any') => {
         if (!itemId || !size) return;
 
         setCartItems((prev) => {
             const cartData = structuredClone(prev || {});
 
-            if (!cartData[itemId]) return cartData;
+            if (!cartData[itemId] || !cartData[itemId][size]) return cartData;
 
-            delete cartData[itemId][size];
+            delete cartData[itemId][size][color];
 
+            if (Object.keys(cartData[itemId][size]).length === 0) {
+                delete cartData[itemId][size];
+            }
             if (Object.keys(cartData[itemId]).length === 0) {
                 delete cartData[itemId];
             }
@@ -396,24 +456,27 @@ const ShopContextProvider = ({ children }) => {
         });
     }, []);
 
-    const updateCartQty = useCallback((itemId, size, qty) => {
-        if (!itemId || !size) return;
+    const updateCartQty = useCallback((itemId, size, color, qty) => {
+        if (!itemId || !size || !color) return;
 
         const n = Number(qty);
 
         setCartItems((prev) => {
             const cartData = structuredClone(prev || {});
 
-            if (!cartData[itemId]) return cartData;
+            if (!cartData[itemId] || !cartData[itemId][size]) return cartData;
 
             if (!n || n <= 0) {
-                delete cartData[itemId][size];
+                delete cartData[itemId][size][color];
 
+                if (Object.keys(cartData[itemId][size]).length === 0) {
+                    delete cartData[itemId][size];
+                }
                 if (Object.keys(cartData[itemId]).length === 0) {
                     delete cartData[itemId];
                 }
             } else {
-                cartData[itemId][size] = n;
+                cartData[itemId][size][color] = n;
             }
 
             return cartData;
@@ -425,7 +488,9 @@ const ShopContextProvider = ({ children }) => {
 
         for (const itemId in cartItems) {
             for (const size in cartItems[itemId]) {
-                count += Number(cartItems[itemId][size]) || 0;
+                for (const color in cartItems[itemId][size]) {
+                    count += Number(cartItems[itemId][size][color]) || 0;
+                }
             }
         }
 
@@ -445,14 +510,16 @@ const ShopContextProvider = ({ children }) => {
             const itemPrice = parseVndPrice(itemInfo.price);
 
             for (const size in cartItems[itemId]) {
-                totalAmount += itemPrice * (Number(cartItems[itemId][size]) || 0);
+                for (const color in cartItems[itemId][size]) {
+                    totalAmount += itemPrice * (Number(cartItems[itemId][size][color]) || 0);
+                }
             }
         }
 
         return totalAmount;
     }, [cartItems, products]);
 
-    // CHANGE: gop san pham DB + assets; API loi thi dung assets
+    // CHANGE: gio chi lay san pham tu database, khong dung local assets nua
     const getProductsData = useCallback(async () => {
         try {
             const requestToken =
@@ -468,21 +535,65 @@ const ShopContextProvider = ({ children }) => {
             const apiProducts = resolveProductsPayload(payload);
 
             if (payload?.success === true || apiProducts.length > 0) {
-                const mergedProducts = mergeProducts(apiProducts, localProducts);
-                setProducts(mergedProducts);
+                const normalizedProducts = apiProducts.map((item, idx) => 
+                    normalizeProduct(item, `api-${idx}`)
+                );
+
+                // Sort newest first
+                normalizedProducts.sort((a, b) => (Number(b?.date) || 0) - (Number(a?.date) || 0));
+                
+                setProducts(normalizedProducts);
                 return;
             }
 
-            setProducts(mergeProducts([], localProducts));
+            setProducts([]);
         } catch (error) {
             console.error('getProductsData error:', error);
-            setProducts(mergeProducts([], localProducts));
+            setProducts([]);
         }
     }, [backendUrl, token]);
 
     useEffect(() => {
         getProductsData();
     }, [getProductsData]);
+
+    const getSystemData = useCallback(async () => {
+        try {
+            const [configRes, vouchersRes, catRes, subRes] = await Promise.all([
+                axios.get(`${backendUrl}/api/system/config`),
+                axios.get(`${backendUrl}/api/system/voucher/list`),
+                axios.get(`${backendUrl}/api/category/list`),
+                axios.get(`${backendUrl}/api/sub-category/list`)
+            ]);
+            
+            if (configRes.data?.success && configRes.data?.config) {
+                if (configRes.data.config.deliveryFee !== undefined) {
+                    setDeliveryFee(configRes.data.config.deliveryFee);
+                }
+            }
+            if (vouchersRes.data?.success && Array.isArray(vouchersRes.data?.vouchers)) {
+                setVouchers(vouchersRes.data.vouchers.filter(v => v.isActive));
+            }
+            if (catRes.data?.success) {
+                setCategories(catRes.data.categories.filter(c => c.status));
+            }
+            if (subRes.data?.success) {
+                setSubCategories(subRes.data.subCategories.filter(s => s.status));
+            }
+        } catch(error) {
+            console.error('getSystemData error:', error);
+        }
+    }, [backendUrl]);
+
+    useEffect(() => {
+        getSystemData();
+    }, [getSystemData]);
+
+    const getDiscountAmount = useCallback(() => {
+        if (!appliedVoucher) return 0;
+        const total = getCartAmount();
+        return Math.floor(total * (appliedVoucher.discountPercent / 100));
+    }, [appliedVoucher, getCartAmount]);
 
     // CHANGE: dong bo size trong cart theo sizes hien tai cua product
     const reconcileCartItems = useCallback(() => {
@@ -499,26 +610,42 @@ const ShopContextProvider = ({ children }) => {
                 );
 
                 for (const size in currentCart[itemId]) {
-                    const qty = Number(currentCart[itemId][size]) || 0;
-                    if (qty <= 0) {
-                        changed = true;
-                        continue;
-                    }
+                    for (const color in currentCart[itemId][size]) {
+                        const qty = Number(currentCart[itemId][size][color]) || 0;
+                        if (qty <= 0) {
+                            changed = true;
+                            continue;
+                        }
 
-                    let normalizedSize = size;
-                    if (
-                        itemInfo &&
-                        Array.isArray(itemInfo.sizes) &&
-                        itemInfo.sizes.length > 0 &&
-                        !itemInfo.sizes.includes(size)
-                    ) {
-                        normalizedSize = itemInfo.sizes[0];
-                        changed = true;
-                    }
+                        let normalizedSize = size;
+                        if (
+                            itemInfo &&
+                            Array.isArray(itemInfo.sizes) &&
+                            itemInfo.sizes.length > 0 &&
+                            !itemInfo.sizes.includes(size)
+                        ) {
+                            normalizedSize = itemInfo.sizes[0];
+                            changed = true;
+                        }
 
-                    if (!nextCart[itemId]) nextCart[itemId] = {};
-                    nextCart[itemId][normalizedSize] =
-                        (Number(nextCart[itemId][normalizedSize]) || 0) + qty;
+                        let normalizedColor = color;
+                        if (
+                            itemInfo &&
+                            Array.isArray(itemInfo.colors) &&
+                            itemInfo.colors.length > 0 &&
+                            color !== 'Any' &&
+                            !itemInfo.colors.includes(color)
+                        ) {
+                            normalizedColor = itemInfo.colors[0];
+                            changed = true;
+                        }
+
+                        if (!nextCart[itemId]) nextCart[itemId] = {};
+                        if (!nextCart[itemId][normalizedSize]) nextCart[itemId][normalizedSize] = {};
+                        
+                        nextCart[itemId][normalizedSize][normalizedColor] =
+                            (Number(nextCart[itemId][normalizedSize][normalizedColor]) || 0) + qty;
+                    }
                 }
             }
 
@@ -544,6 +671,11 @@ const ShopContextProvider = ({ children }) => {
             products,
             currency,
             delivery_fee,
+            setDeliveryFee,
+            vouchers,
+            appliedVoucher,
+            setAppliedVoucher,
+            getDiscountAmount,
             cartItems,
             addToCart,
             removeFromCart,
@@ -557,9 +689,15 @@ const ShopContextProvider = ({ children }) => {
             setShowSearch,
             backendUrl,
             getProductsData,
+            banners,
+            getBanners,
+            getReviews,
+            addReview,
             token,
             setToken,
             logout,
+            categories,
+            subCategories,
         }),
         [
             products,
@@ -576,6 +714,13 @@ const ShopContextProvider = ({ children }) => {
             getProductsData,
             token,
             logout,
+            delivery_fee,
+            setDeliveryFee,
+            vouchers,
+            appliedVoucher,
+            getDiscountAmount,
+            categories,
+            subCategories,
         ],
     );
 

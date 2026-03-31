@@ -23,8 +23,31 @@ const Cart = () => {
         removeFromCart,
         getCartAmount,
         delivery_fee,
+        vouchers,
+        appliedVoucher,
+        setAppliedVoucher,
+        getDiscountAmount,
         navigate,
     } = useContext(ShopContext);
+
+    const [voucherInput, setVoucherInput] = useState('');
+    const [voucherError, setVoucherError] = useState('');
+
+    const handleApplyVoucher = () => {
+        setVoucherError('');
+        if (!voucherInput.trim()) return;
+
+        const code = voucherInput.trim().toUpperCase();
+        const found = vouchers.find(v => v.code === code);
+        
+        if (!found) {
+            setVoucherError('Mã voucher không hợp lệ hoặc đã hết hạn.');
+            return;
+        }
+
+        setAppliedVoucher(found);
+        setVoucherInput('');
+    };
 
     const [cartData, setCartData] = useState([]);
 
@@ -33,13 +56,16 @@ const Cart = () => {
 
         for (const itemId in cartItems) {
             for (const size in cartItems[itemId]) {
-                const qty = Number(cartItems[itemId][size]) || 0;
-                if (qty > 0) {
-                    tempData.push({
-                        _id: itemId,
-                        size,
-                        quantity: qty,
-                    });
+                for (const color in cartItems[itemId][size]) {
+                    const qty = Number(cartItems[itemId][size][color]) || 0;
+                    if (qty > 0) {
+                        tempData.push({
+                            _id: itemId,
+                            size,
+                            color,
+                            quantity: qty,
+                        });
+                    }
                 }
             }
         }
@@ -103,6 +129,15 @@ const Cart = () => {
                                                 <p className="rounded-full border border-[var(--border)] bg-white px-3 py-1">
                                                     Size {displaySize}
                                                 </p>
+                                                {item.color && item.color !== 'Any' && (
+                                                    <p className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1">
+                                                        <span
+                                                            className="inline-block h-3 w-3 rounded-full border border-slate-200"
+                                                            style={{ backgroundColor: item.color.toLowerCase() }}
+                                                        />
+                                                        {item.color}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -112,9 +147,9 @@ const Cart = () => {
                                             onChange={(e) => {
                                                 const val = Number(e.target.value);
                                                 if (val <= 0 || e.target.value === '') {
-                                                    removeFromCart(item._id, item.size);
+                                                    removeFromCart(item._id, item.size, item.color);
                                                 } else {
-                                                    updateCartQty(item._id, item.size, val);
+                                                    updateCartQty(item._id, item.size, item.color, val);
                                                 }
                                             }}
                                             className="w-20 rounded-full border border-[var(--border)] px-4 py-3 text-center text-sm outline-none"
@@ -124,7 +159,7 @@ const Cart = () => {
                                         />
 
                                         <button
-                                            onClick={() => removeFromCart(item._id, item.size)}
+                                            onClick={() => removeFromCart(item._id, item.size, item.color)}
                                             className="rounded-full border border-[var(--border)] p-3 hover:bg-slate-900"
                                             type="button"
                                         >
@@ -146,28 +181,85 @@ const Cart = () => {
                         <Title text1={'CART'} text2={'TOTALS'} />
 
                         <div className="mt-6 space-y-4 text-sm text-slate-600">
+                            
+                            {/* Hot Vouchers UI */}
+                            {vouchers.filter(v => v.showAsHot).length > 0 && (
+                                <div className="mb-4 rounded-xl bg-orange-50 p-4 border border-orange-100">
+                                    <p className="text-orange-800 font-semibold mb-2 flex items-center gap-1">🎇 MÃ HOT HÔM NAY</p>
+                                    <div className="flex flex-col gap-2">
+                                        {vouchers.filter(v => v.showAsHot).map(v => (
+                                            <div key={v._id} className="flex justify-between items-center bg-white p-2 rounded border border-orange-100 border-dashed">
+                                                <div>
+                                                    <span className="font-mono font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded mr-2">{v.code}</span>
+                                                    <span className="text-xs text-orange-800">- {v.discountPercent}% OFF</span>
+                                                </div>
+                                                <button onClick={() => { setVoucherInput(v.code); setVoucherError(''); }} className="text-xs font-semibold text-orange-600 hover:text-orange-700">DÙNG</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Voucher Input */}
+                            <div className="flex flex-col gap-2 pb-2">
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={voucherInput}
+                                        onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
+                                        placeholder="Nhập mã giảm giá..." 
+                                        className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-800 font-mono uppercase"
+                                    />
+                                    <button 
+                                        onClick={handleApplyVoucher}
+                                        className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900"
+                                    >
+                                        ÁP DỤNG
+                                    </button>
+                                </div>
+                                {voucherError && <p className="text-xs text-red-500">{voucherError}</p>}
+                                {appliedVoucher && (
+                                    <div className="flex justify-between items-center rounded bg-emerald-50 px-3 py-2 border border-emerald-100">
+                                        <p className="text-xs font-medium text-emerald-700">
+                                            Đã áp dụng mã <span className="font-mono font-bold bg-emerald-100 px-1 rounded">{appliedVoucher.code}</span>
+                                        </p>
+                                        <button onClick={() => setAppliedVoucher(null)} className="text-emerald-700 hover:text-emerald-900 font-bold text-xs" title="Gỡ mã">✕</button>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <hr className="border-slate-100" />
+
                             <div className="flex justify-between">
-                                <p>Subtotal</p>
+                                <p>Tạm tính</p>
                                 <p>{formatVndPrice(getCartAmount())}</p>
                             </div>
 
+                            {appliedVoucher && (
+                                <div className="flex justify-between text-emerald-600 font-medium">
+                                    <p>Giảm giá ({appliedVoucher.discountPercent}%)</p>
+                                    <p>-{formatVndPrice(getDiscountAmount())}</p>
+                                </div>
+                            )}
+
                             <div className="flex justify-between">
-                                <p>Shipping Fee</p>
+                                <p>Phí giao hàng</p>
                                 <p>{formatVndPrice(delivery_fee)}</p>
                             </div>
 
                             <div className="rounded-[22px] bg-slate-900 px-5 py-4 text-base font-semibold text-white">
                                 <div className="flex justify-between">
-                                    <p>Total</p>
-                                    <p>{formatVndPrice(getCartAmount() + delivery_fee)}</p>
+                                    <p>Tổng cộng</p>
+                                    <p>{formatVndPrice(getCartAmount() - getDiscountAmount() + delivery_fee)}</p>
                                 </div>
                             </div>
                         </div>
 
                         <button
                             onClick={() => navigate('/place-order')}
-                            className="mt-6 w-full rounded-full bg-slate-900 px-6 py-4 text-sm font-semibold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(15,23,42,0.16)] hover:-translate-y-0.5 hover:bg-slate-800"
+                            className="mt-6 w-full rounded-full bg-slate-900 px-6 py-4 text-sm font-semibold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(15,23,42,0.16)] hover:-translate-y-0.5 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
                             type="button"
+                            disabled={cartData.length === 0}
                         >
                             Proceed To Checkout
                         </button>
