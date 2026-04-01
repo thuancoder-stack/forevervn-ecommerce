@@ -281,7 +281,8 @@ const ShopContextProvider = ({ children }) => {
 
     const addReview = async (formData) => {
         try {
-            const response = await axios.post(backendUrl + '/api/review-user/add', formData);
+            const config = token ? { headers: { token } } : {};
+            const response = await axios.post(backendUrl + '/api/review-user/add', formData, config);
             return response.data;
         } catch (error) {
             console.log(error);
@@ -487,6 +488,12 @@ const ShopContextProvider = ({ children }) => {
         let count = 0;
 
         for (const itemId in cartItems) {
+            const itemInfo = products.find(
+                (p) => String(p._id || p.id) === String(itemId),
+            );
+
+            if (!itemInfo) continue;
+
             for (const size in cartItems[itemId]) {
                 for (const color in cartItems[itemId][size]) {
                     count += Number(cartItems[itemId][size][color]) || 0;
@@ -495,7 +502,7 @@ const ShopContextProvider = ({ children }) => {
         }
 
         return count;
-    }, [cartItems]);
+    }, [cartItems, products]);
 
     const getCartAmount = useCallback(() => {
         let totalAmount = 0;

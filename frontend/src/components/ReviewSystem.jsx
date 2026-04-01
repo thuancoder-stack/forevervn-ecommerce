@@ -49,7 +49,6 @@ const ReviewSystem = ({ productId }) => {
             formData.append('productId', productId);
             formData.append('rating', rating);
             formData.append('comment', comment);
-            formData.append('userName', 'Khách hàng'); // In a real app, get from user profile
 
             images.forEach((img) => {
                 formData.append('images', img);
