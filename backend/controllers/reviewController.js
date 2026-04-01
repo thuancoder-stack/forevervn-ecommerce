@@ -1,10 +1,19 @@
 import reviewModel from '../models/reviewModel.js';
+import userModel from '../models/userModel.js';
 import { v2 as cloudinary } from 'cloudinary';
 import logAction from '../utils/logger.js';
 
 const addReview = async (req, res) => {
     try {
-        const { userId, productId, rating, comment, userName } = req.body;
+        const { userId, productId, rating, comment } = req.body;
+
+        const user = await userModel.findById(userId);
+        if (!user) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+        
+        const userName = user.name;
+
         const images = req.files;
 
         let imageUrls = [];
