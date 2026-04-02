@@ -5,6 +5,8 @@ const orderSchema = new mongoose.Schema(
         userId: { type: String, required: true },
         items: { type: Array, required: true },
         amount: { type: Number, required: true },
+        cogs: { type: Number, default: 0 },
+        profit: { type: Number, default: 0 },
         address: { type: Object, required: true },
         status: { type: String, required: true, default: 'Order Placed' },
         paymentMethod: { type: String, required: true },

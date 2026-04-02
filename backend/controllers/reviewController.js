@@ -52,7 +52,7 @@ const listReviews = async (req, res) => {
         let query = {};
         if (productId) query.productId = productId;
 
-        const reviews = await reviewModel.find(query).sort({ date: -1 });
+        const reviews = await reviewModel.find(query).populate('productId', 'name image').sort({ date: -1 });
         res.json({ success: true, reviews });
     } catch (error) {
         console.log(error);
@@ -76,4 +76,23 @@ const deleteReview = async (req, res) => {
     }
 };
 
-export { addReview, listReviews, deleteReview };
+const replyReview = async (req, res) => {
+    try {
+        const { id, reply } = req.body;
+        const review = await reviewModel.findByIdAndUpdate(id, {
+            adminReply: reply,
+            replyDate: Date.now()
+        }, { new: true });
+
+        if (req.adminEmail) {
+            await logAction(req.adminEmail, req.adminName, 'REPLY_REVIEW', `Replied to review ID: ${id}`, id);
+        }
+
+        res.json({ success: true, message: 'Reply added successfully', review });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+export { addReview, listReviews, deleteReview, replyReview };

@@ -8,7 +8,9 @@ const reviewSchema = new mongoose.Schema({
     comment: { type: String, required: true },
     images: { type: Array, default: [] }, // Image urls only
     status: { type: Boolean, default: true },
-    date: { type: Number, default: Date.now }
+    date: { type: Number, default: Date.now },
+    adminReply: { type: String, default: "" },
+    replyDate: { type: Number }
 });
 
 const reviewModel = mongoose.models.review_user || mongoose.model('review_user', reviewSchema);

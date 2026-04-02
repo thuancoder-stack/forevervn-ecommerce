@@ -12,14 +12,21 @@ const adminAuth = async (req, res, next) => {
 
         const adminEmail = (process.env.ADMIN_EMAIL || '').trim().replace(/^"|"$/g, '');
 
-        if (token_decode.email !== adminEmail) {
-            return res.json({ success: false, message: 'Not Authorized Login Again' });
+        if (token_decode.email && token_decode.email === adminEmail) {
+            req.adminEmail = token_decode.email;
+            req.adminName = token_decode.email.split('@')[0];
+            req.userRole = 'Admin';
+            return next();
         }
 
-        req.adminEmail = token_decode.email;
-        req.adminName = token_decode.email.split('@')[0]; // Simple name from email
+        // Check if token is DB based (has role)
+        if (token_decode.id && (token_decode.role === 'Admin' || token_decode.role === 'Employee')) {
+            req.adminId = token_decode.id;
+            req.userRole = token_decode.role;
+            return next();
+        }
 
-        next();
+        return res.json({ success: false, message: 'Not Authorized Login Again' });
 
     } catch (error) {
         console.log(error);

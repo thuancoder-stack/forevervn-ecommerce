@@ -1,13 +1,25 @@
 import orderModel from '../models/orderModel.js';
 import userModel from '../models/userModel.js';
+import importBatchModel from '../models/importBatchModel.js';
 import logAction from '../utils/logger.js';
 
 const placeOrder = async (req, res) => {
     try {
-        const { userId, items, amount, address } = req.body;
+        const { userId, items, amount, address, voucherCode } = req.body;
 
         if (!userId) {
             return res.json({ success: false, message: 'Missing user id' });
+        }
+
+        // Smart Voucher "BANMOI" Validation
+        if (voucherCode && voucherCode.toUpperCase() === 'BANMOI') {
+            const completedCount = await orderModel.countDocuments({
+                userId,
+                status: 'Delivered' // Chỉ tính đơn đã giao thành công
+            });
+            if (completedCount > 0) {
+                return res.json({ success: false, message: 'Mã BANMOI chỉ áp dụng cho đơn hàng đầu tiên hoàn thành!' });
+            }
         }
 
         if (!Array.isArray(items) || items.length === 0) {
@@ -22,10 +34,45 @@ const placeOrder = async (req, res) => {
             return res.json({ success: false, message: 'Address is required' });
         }
 
+        let totalCOGS = 0;
+
+        // Perform FIFO deduction
+        for (let item of items) {
+            let requiredQty = item.quantity;
+            let itemCOGS = 0;
+
+            const batches = await importBatchModel.find({
+                productId: item._id,
+                size: item.size,
+                color: item.color || 'Any',
+                status: 'Active',
+                remainingQty: { $gt: 0 }
+            }).sort({ importDate: 1 });
+
+            for (let batch of batches) {
+                if (requiredQty <= 0) break;
+
+                const deductQty = Math.min(batch.remainingQty, requiredQty);
+                batch.remainingQty -= deductQty;
+                if (batch.remainingQty === 0) batch.status = 'Depleted';
+                
+                await batch.save();
+
+                itemCOGS += deductQty * batch.costPrice;
+                requiredQty -= deductQty;
+            }
+
+            totalCOGS += itemCOGS;
+            // Note: If requiredQty > 0, it means we oversold past tracked inventory. 
+            // In a real system, we might reject the order or fallback costPrice.
+        }
+
         const orderData = {
             userId,
             items,
             amount: Number(amount),
+            cogs: totalCOGS,
+            profit: Number(amount) - totalCOGS,
             address,
             status: 'Order Placed',
             paymentMethod: 'COD',

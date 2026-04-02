@@ -1,4 +1,5 @@
 import userModel from '../models/userModel.js';
+import userBehaviorModel from '../models/userBehaviorModel.js';
 
 // Add products to user cart
 const addToCart = async (req, res) => {
@@ -28,6 +29,15 @@ const addToCart = async (req, res) => {
         cartData[itemId][size][color] = (Number(cartData[itemId][size][color]) || 0) + 1;
 
         await userModel.findByIdAndUpdate(userId, { cartData });
+
+        // Ghi nhận hành vi User Analytics
+        userBehaviorModel.create({
+            userId,
+            actionType: 'ADD_TO_CART',
+            targetId: itemId,
+            metadata: { size, color }
+        }).catch(err => console.log('Log add cart error:', err));
+
         res.json({ success: true, message: 'Added To Cart' });
 
     } catch (error) {

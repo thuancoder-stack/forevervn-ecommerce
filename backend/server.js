@@ -16,7 +16,10 @@ import dashboardRouter from './routes/dashboardRouter.js';
 import auditLogRouter from './routes/auditLogRouter.js';
 import bannerRouter from './routes/bannerRoute.js';
 import reviewRouter from './routes/reviewRoute.js';
-
+import importBatchRouter from './routes/importBatchRoute.js';
+import behaviorRouter from './routes/behaviorRouter.js';
+import startStockAlertJob from './utils/stockAlert.js';
+import aiRouter from './routes/aiRouter.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -27,6 +30,7 @@ const port = process.env.PORT || 4000;
 
 connectDB();
 connectCloudinary();
+startStockAlertJob();
 
 app.use(cors());
 app.use(express.json());
@@ -42,7 +46,9 @@ app.use('/api/dashboard', dashboardRouter);
 app.use('/api/audit-log', auditLogRouter);
 app.use('/api/banner', bannerRouter);
 app.use('/api/review-user', reviewRouter);
-
+app.use('/api/import-batch', importBatchRouter);
+app.use('/api/behavior', behaviorRouter);
+app.use('/api/ai', aiRouter);
 app.get('/', (req, res) => {
     res.send('Hello World! API dang chay...');
 });
