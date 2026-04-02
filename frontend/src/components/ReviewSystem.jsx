@@ -3,7 +3,7 @@ import { ShopContext } from '../context/ShopContext';
 import { Star, User, Camera, Send, X, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
-const ReviewSystem = ({ productId }) => {
+const ReviewSystem = ({ productId, onReviewsLoaded }) => {
     const { getReviews, addReview, token, backendUrl } = useContext(ShopContext);
     const [reviews, setReviews] = useState([]);
     const [rating, setRating] = useState(5);
@@ -16,6 +16,12 @@ const ReviewSystem = ({ productId }) => {
         setFetching(true);
         const data = await getReviews(productId);
         setReviews(data);
+        if (onReviewsLoaded && Array.isArray(data)) {
+            const count = data.length;
+            const avg = count > 0 ? (data.reduce((acc, curr) => acc + Number(curr.rating), 0) / count) : 0;
+            // Làm tròn đến 1 chữ số thập phân (VD: 4.5)
+            onReviewsLoaded({ averageRating: avg, totalReviews: count });
+        }
         setFetching(false);
     };
 
@@ -206,6 +212,20 @@ const ReviewSystem = ({ productId }) => {
                                                             alt="" 
                                                         />
                                                     ))}
+                                                </div>
+                                            )}
+
+                                            {/* Phản hồi từ quản trị viên */}
+                                            {item.adminReply && (
+                                                <div className="mt-6 bg-slate-50 border border-slate-100 rounded-[24px] p-6 relative before:content-[''] before:absolute before:-top-3 before:left-6 before:w-0 before:h-0 before:border-l-[12px] before:border-l-transparent before:border-r-[12px] before:border-r-transparent before:border-b-[12px] before:border-b-slate-50">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
+                                                            <User size={16} className="text-white" />
+                                                        </div>
+                                                        <span className="text-xs font-black uppercase text-slate-900 tracking-wider">Phản hồi từ FOREVERVN</span>
+                                                        <span className="ml-auto text-[10px] text-slate-400 font-bold">{new Date(item.replyDate).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-slate-600 text-sm leading-relaxed italic font-medium">"{item.adminReply}"</p>
                                                 </div>
                                             )}
                                         </div>

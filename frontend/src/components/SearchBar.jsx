@@ -4,7 +4,7 @@ import { assets } from '../assets/assets'
 import { ShopContext } from '../context/ShopContext'
 
 const SearchBar = () => {
-    const { search, setSearch, showSearch, setShowSearch } = useContext(ShopContext);
+    const { search, setSearch, showSearch, setShowSearch, logBehavior } = useContext(ShopContext);
     const [visible, setVisible] = useState(false);
     const location = useLocation();
 
@@ -16,6 +16,17 @@ const SearchBar = () => {
             setShowSearch(false);
         }
     }, [location.pathname, setShowSearch]);
+
+    // Tracking Search Behavior (Debounced)
+    useEffect(() => {
+        if (showSearch && search.trim().length > 2) {
+            const delayDebounceFn = setTimeout(() => {
+                logBehavior('SEARCH', search.trim());
+            }, 1000);
+
+            return () => clearTimeout(delayDebounceFn);
+        }
+    }, [search, showSearch, logBehavior]);
 
     if (!visible || !showSearch) return null;
 

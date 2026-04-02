@@ -279,6 +279,19 @@ const ShopContextProvider = ({ children }) => {
         }
     };
 
+    const getProductStock = useCallback(async (productId) => {
+        try {
+            const response = await axios.get(`${backendUrl}/api/product/stock/${productId}`);
+            if (response.data.success) {
+                return response.data.stock;
+            }
+            return 0;
+        } catch (error) {
+            console.error('getProductStock error:', error);
+            return 0;
+        }
+    }, [backendUrl]);
+
     const addReview = async (formData) => {
         try {
             const config = token ? { headers: { token } } : {};
@@ -417,6 +430,24 @@ const ShopContextProvider = ({ children }) => {
         return () => clearTimeout(timeoutId);
     }, [cartItems, isCartHydrated, syncCartToDatabase, token]);
 
+    const logBehavior = useCallback(async (actionType, targetId, metadata = {}) => {
+        try {
+            const authToken = token || localStorage.getItem('token') || '';
+            const guestId = localStorage.getItem('guestId') || `guest_${Math.random().toString(36).substring(2, 9)}`;
+            if (!localStorage.getItem('guestId')) localStorage.setItem('guestId', guestId);
+
+            await axios.post(`${backendUrl}/api/user/log-behavior`, {
+                actionType,
+                targetId,
+                metadata,
+                guestId
+            }, { headers: authToken ? { token: authToken } : {} });
+        } catch (error) {
+            // Implent silent fail for analytics
+            console.error('Behavior log failed', error);
+        }
+    }, [backendUrl, token]);
+
     // CHANGE: cart update theo functional setState de tranh stale state
     const addToCart = useCallback((itemId, size, color = 'Any') => {
         if (!itemId || !size) return;
@@ -434,7 +465,10 @@ const ShopContextProvider = ({ children }) => {
             cartData[itemId][size][color] = (Number(cartData[itemId][size][color]) || 0) + 1;
             return cartData;
         });
-    }, []);
+
+        // Log action
+        logBehavior('ADD_TO_CART', itemId, { size, color });
+    }, [logBehavior]);
 
     const removeFromCart = useCallback((itemId, size, color = 'Any') => {
         if (!itemId || !size) return;
@@ -455,7 +489,10 @@ const ShopContextProvider = ({ children }) => {
 
             return cartData;
         });
-    }, []);
+
+        // Log action
+        logBehavior('REMOVE_FROM_CART', itemId, { size, color });
+    }, [logBehavior]);
 
     const updateCartQty = useCallback((itemId, size, color, qty) => {
         if (!itemId || !size || !color) return;
@@ -705,6 +742,8 @@ const ShopContextProvider = ({ children }) => {
             logout,
             categories,
             subCategories,
+            getProductStock,
+            logBehavior,
         }),
         [
             products,
@@ -728,6 +767,8 @@ const ShopContextProvider = ({ children }) => {
             getDiscountAmount,
             categories,
             subCategories,
+            getProductStock,
+            logBehavior,
         ],
     );
 

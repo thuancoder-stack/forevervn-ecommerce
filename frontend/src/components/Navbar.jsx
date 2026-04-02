@@ -102,6 +102,13 @@ const Navbar = () => {
                                     <div className="pointer-events-none absolute right-0 top-full hidden pt-4 group-hover:block group-hover:pointer-events-auto">
                                         <div className="section-shell min-w-[180px] rounded-[22px] p-2">
                                             <button
+                                                onClick={() => navigate('/my-account')}
+                                                className="w-full rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-600 hover:bg-slate-900 hover:text-white"
+                                                type="button"
+                                            >
+                                                My Account
+                                            </button>
+                                            <button
                                                 onClick={() => navigate('/orders')}
                                                 className="w-full rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-600 hover:bg-slate-900 hover:text-white"
                                                 type="button"
@@ -201,6 +208,16 @@ const Navbar = () => {
                     <div className="space-y-3 border-t border-[var(--border)] pt-5">
                         {token ? (
                             <>
+                                <button
+                                    onClick={() => {
+                                        navigate('/my-account');
+                                        setVisible(false);
+                                    }}
+                                    className="w-full rounded-[20px] border border-[var(--border)] px-4 py-3 text-left text-sm font-semibold text-slate-600"
+                                    type="button"
+                                >
+                                    MY ACCOUNT
+                                </button>
                                 <button
                                     onClick={() => {
                                         navigate('/orders');
