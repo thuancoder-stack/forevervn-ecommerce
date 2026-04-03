@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import Login from './components/Login'
+import ToastSoundBridge from './components/ToastSoundBridge'
 import Dashboard from './pages/Dashboard'
 import Customers from './pages/Customers'
 import Employees from './pages/Employees'
@@ -38,7 +39,8 @@ const App = () => {
 
   if (!token) {
     return (
-      <div className='bg-gray-50 min-h-screen'>
+      <div className='min-h-screen bg-[var(--admin-bg)] text-[var(--admin-text)] transition-colors duration-300'>
+        <ToastSoundBridge />
         <ToastContainer />
         <Login setToken={setToken} />
       </div>
@@ -46,14 +48,15 @@ const App = () => {
   }
 
   return (
-    <div className='min-h-screen bg-transparent'>
+    <div className='min-h-screen bg-[var(--admin-bg)] text-[var(--admin-text)] transition-colors duration-300'>
+      <ToastSoundBridge />
       <ToastContainer />
       <Navbar setToken={setToken} />
 
-      <div className='flex w-full'>
+      <div className='flex min-h-[calc(100vh-81px)] w-full'>
         <Sidebar />
 
-        <div className='flex-1 p-4 md:p-5 xl:p-6'>
+        <div className='flex-1 min-w-0 p-4 md:p-5 xl:p-6'>
           <Routes>
             <Route path='/' element={<Navigate to='/dashboard' replace />} />
             <Route path='/dashboard' element={<Dashboard token={token} backendUrl={backendUrl} />} />

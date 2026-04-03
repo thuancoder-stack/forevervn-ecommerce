@@ -4,21 +4,25 @@ import { Link, useLocation } from 'react-router-dom'
 import { PlusCircle, List, Package, LayoutDashboard, Users, Ticket, Layers, History, ListTree, Image, MessageSquare, Zap } from 'lucide-react'
 
 const ALL_NAV_ITEMS = [
-  { to: '/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard', roles: ['Admin']  },
-  { to: '/employees', icon: <Users size={18} />,           label: 'Employees', roles: ['Admin']  },
-  { to: '/import-batch', icon: <Package size={18} />,       label: 'Imports Hub', roles: ['Admin', 'Employee'] },
-  { to: '/bulk-operation', icon: <Zap size={18} />,         label: 'Smart Ops', roles: ['Admin'] },
-  { to: '/categories', icon: <Layers size={18} />,          label: 'Categories', roles: ['Admin', 'Employee'] },
-  { to: '/sub-categories', icon: <ListTree size={18} />,    label: 'Sub-Categories', roles: ['Admin', 'Employee'] },
-  { to: '/customers', icon: <Users size={18} />,           label: 'Customers', roles: ['Admin']  },
-  { to: '/vouchers',  icon: <Ticket size={18} />,          label: 'Vouchers', roles: ['Admin']   },
-  { to: '/add',       icon: <PlusCircle size={18} />,      label: 'Add Items', roles: ['Admin', 'Employee']  },
-  { to: '/list',      icon: <List size={18} />,            label: 'List Items', roles: ['Admin', 'Employee'] },
-  { to: '/orders',    icon: <Package size={18} />,         label: 'Orders', roles: ['Admin', 'Employee']     },
-  { to: '/banners',   icon: <Image size={18} />,           label: 'Banners', roles: ['Admin', 'Employee']    },
-  { to: '/reviews',   icon: <MessageSquare size={18} />,    label: 'Reviews', roles: ['Admin', 'Employee']    },
-  { to: '/audit-logs', icon: <History size={18} />,         label: 'Audit Logs', roles: ['Admin'] },
+  { to: '/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard', roles: ['Admin'], group: 'CORE' },
+  { to: '/employees', icon: <Users size={18} />, label: 'Employees', roles: ['Admin'], group: 'CORE' },
+  { to: '/customers', icon: <Users size={18} />, label: 'Customers', roles: ['Admin'], group: 'CORE' },
+
+  { to: '/categories', icon: <Layers size={18} />, label: 'Categories', roles: ['Admin', 'Employee'], group: 'CATALOG' },
+  { to: '/sub-categories', icon: <ListTree size={18} />, label: 'Sub-Categories', roles: ['Admin', 'Employee'], group: 'CATALOG' },
+  { to: '/add', icon: <PlusCircle size={18} />, label: 'Add Items', roles: ['Admin', 'Employee'], group: 'CATALOG' },
+  { to: '/list', icon: <List size={18} />, label: 'List Items', roles: ['Admin', 'Employee'], group: 'CATALOG' },
+  { to: '/banners', icon: <Image size={18} />, label: 'Banners', roles: ['Admin', 'Employee'], group: 'CATALOG' },
+  { to: '/reviews', icon: <MessageSquare size={18} />, label: 'Reviews', roles: ['Admin', 'Employee'], group: 'CATALOG' },
+
+  { to: '/import-batch', icon: <Package size={18} />, label: 'Imports Hub', roles: ['Admin', 'Employee'], group: 'COMMERCE' },
+  { to: '/bulk-operation', icon: <Zap size={18} />, label: 'Smart Ops', roles: ['Admin'], group: 'COMMERCE' },
+  { to: '/vouchers', icon: <Ticket size={18} />, label: 'Vouchers', roles: ['Admin'], group: 'COMMERCE' },
+  { to: '/orders', icon: <Package size={18} />, label: 'Orders', roles: ['Admin', 'Employee'], group: 'COMMERCE' },
+  { to: '/audit-logs', icon: <History size={18} />, label: 'Audit Logs', roles: ['Admin'], group: 'COMMERCE' },
 ]
+
+const NAV_GROUPS = ['CORE', 'CATALOG', 'COMMERCE']
 
 const SidebarComponent = () => {
   const location = useLocation()
@@ -44,49 +48,64 @@ const SidebarComponent = () => {
   return (
     <Sidebar
       rootStyles={{
-        height: '100vh',
-        borderRight: '1px solid #e7ddcf',
-        background: 'rgba(255,251,247,0.82)',
-        backdropFilter: 'blur(18px)',
+        height: 'calc(100vh - 98px)',
+        borderRight: '1px solid var(--admin-border)',
+        background: 'var(--admin-glass)',
+        backdropFilter: 'blur(22px)',
         width: '244px',
+        boxShadow: '12px 0 30px rgba(15, 23, 42, 0.03)',
       }}
     >
-      <Menu
-        menuItemStyles={{
-          button: ({ active }) => ({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '11px 18px',
-            margin: '5px 12px',
-            borderRadius: '16px',
-            fontSize: '13.5px',
-            fontWeight: active ? '600' : '500',
-            color: active ? '#1f1a17' : '#746b61',
-            backgroundColor: active ? '#f8f1e8' : 'transparent',
-            border: active ? '1px solid #dfcfbc' : '1px solid transparent',
-            boxShadow: active ? '0 10px 24px rgba(31, 26, 23, 0.06)' : 'none',
-            '&:hover': {
-              backgroundColor: '#fbf6ef',
-              color: '#1f1a17',
-            },
-          }),
-          icon: ({ active }) => ({
-            color: active ? '#8a6a1f' : '#8b7c6e',
-          }),
-        }}
-      >
-        {navItems.map(({ to, icon, label }) => (
-          <MenuItem
-            key={to}
-            icon={icon}
-            component={<Link to={to} />}
-            active={isItemActive(to)}
-          >
-            {label}
-          </MenuItem>
-        ))}
-      </Menu>
+      <div className='admin-scrollbar h-full overflow-y-auto py-3'>
+        {NAV_GROUPS.map((group) => {
+          const items = navItems.filter((item) => item.group === group)
+          if (!items.length) return null
+
+          return (
+            <div key={group} className='mb-4'>
+              <div className='px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--admin-tertiary)]/80'>
+                {group}
+              </div>
+              <Menu
+                menuItemStyles={{
+                  button: ({ active }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '11px 18px',
+                    margin: '5px 12px',
+                    borderRadius: '16px',
+                    fontSize: '13.5px',
+                    fontWeight: active ? '600' : '500',
+                    color: active ? 'var(--admin-text)' : 'var(--admin-muted)',
+                    background: active ? 'var(--admin-surface-soft)' : 'transparent',
+                    border: active ? '1px solid var(--admin-border)' : '1px solid transparent',
+                    boxShadow: active ? '0 12px 26px rgba(15, 23, 42, 0.06)' : 'none',
+                    '&:hover': {
+                      backgroundColor: 'var(--admin-surface-soft)',
+                      color: 'var(--admin-text)',
+                    },
+                  }),
+                  icon: ({ active }) => ({
+                    color: active ? 'var(--admin-tertiary)' : 'var(--admin-muted)',
+                  }),
+                }}
+              >
+                {items.map(({ to, icon, label }) => (
+                  <MenuItem
+                    key={to}
+                    icon={icon}
+                    component={<Link to={to} />}
+                    active={isItemActive(to)}
+                  >
+                    {label}
+                  </MenuItem>
+                ))}
+              </Menu>
+            </div>
+          )
+        })}
+      </div>
     </Sidebar>
   )
 }

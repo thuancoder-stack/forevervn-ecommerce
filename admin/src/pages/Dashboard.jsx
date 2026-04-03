@@ -5,6 +5,9 @@ import { motion } from 'framer-motion'
 import { Icon } from '@iconify/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-toastify'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { backendUrl as defaultBackendUrl } from '../config'
 import { useDashboardStore } from '../store/useDashboardStore'
 import {
@@ -143,26 +146,26 @@ const DashboardIcon = ({ icon, size = 18, className = '' }) => (
 )
 
 const QueryError = ({ message, onRetry }) => (
-  <div className='rounded-[28px] border border-rose-200 bg-white px-6 py-8 text-center shadow-sm'>
-    <p className='text-base font-semibold text-slate-900'>Dashboard failed to load</p>
-    <p className='mt-2 text-sm text-slate-500'>{message}</p>
-    <button
-      type='button'
-      onClick={onRetry}
-      className='mt-4 inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800'
-    >
-      <DashboardIcon icon='mdi:refresh' size={16} />
-      Try again
-    </button>
-  </div>
+  <Card className='border-rose-200 bg-white/96 text-center'>
+    <CardHeader className='px-6 py-8'>
+      <CardTitle className='text-base text-slate-900'>Dashboard failed to load</CardTitle>
+      <CardDescription className='mt-1'>{message}</CardDescription>
+      <div className='pt-2'>
+        <Button type='button' onClick={onRetry}>
+          <DashboardIcon icon='mdi:refresh' size={16} />
+          Try again
+        </Button>
+      </div>
+    </CardHeader>
+  </Card>
 )
 
 const PanelHeader = ({ eyebrow, title, description, icon: Icon, iconClass = 'bg-slate-100 text-slate-600', action }) => (
-  <div className='flex items-start justify-between gap-3'>
+  <CardHeader className='flex-row items-start justify-between space-y-0 p-0'>
     <div className='min-w-0'>
       <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400'>{eyebrow}</p>
-      <h2 className='mt-1 text-[18px] font-semibold tracking-tight text-slate-900'>{title}</h2>
-      {description ? <p className='mt-1 text-sm text-slate-500'>{description}</p> : null}
+      <CardTitle className='mt-1 text-[18px] font-semibold tracking-tight text-slate-900'>{title}</CardTitle>
+      {description ? <CardDescription className='mt-1 text-sm text-slate-500'>{description}</CardDescription> : null}
     </div>
     {action || Icon ? (
       action || (
@@ -173,18 +176,14 @@ const PanelHeader = ({ eyebrow, title, description, icon: Icon, iconClass = 'bg-
         </div>
       )
     ) : null}
-  </div>
+  </CardHeader>
 )
 
 const DashboardAction = ({ icon: Icon, children, className = '', ...props }) => (
-  <button
-    type='button'
-    className={`inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 ${className}`}
-    {...props}
-  >
+  <Button type='button' variant='secondary' className={className} {...props}>
     <DashboardIcon icon={Icon} size={16} />
     {children}
-  </button>
+  </Button>
 )
 
 const StatCard = ({ label, sublabel, value, icon, palette }) => {
@@ -192,7 +191,7 @@ const StatCard = ({ label, sublabel, value, icon, palette }) => {
     <motion.div
       variants={itemVariants}
       whileHover={{ y: -4 }}
-      className={`relative overflow-hidden rounded-[24px] border bg-gradient-to-br p-3.5 ${palette.card} ${palette.border} ${palette.glow}`}
+      className={`relative overflow-hidden border bg-gradient-to-br p-3.5 ${palette.card} ${palette.border} ${palette.glow}`}
     >
       <div className='relative z-10 flex items-start justify-between gap-3'>
         <div className={`inline-flex rounded-full p-1 ${palette.iconFrame}`}>
@@ -215,33 +214,25 @@ const StatCard = ({ label, sublabel, value, icon, palette }) => {
   )
 }
 
-const MiniMetric = ({ label, value, icon, iconClass, isActive, onClick }) => {
+const MiniMetric = ({ label, value, icon, iconClass }) => {
   return (
-    <motion.button
-      type='button'
+    <motion.div
       variants={itemVariants}
       whileHover={{ y: -3 }}
-      onClick={onClick}
-      className={`rounded-2xl border px-3.5 py-3 text-left transition ${
-        isActive
-          ? 'border-slate-900 bg-slate-900 text-white shadow-[0_16px_34px_rgba(15,23,42,0.18)]'
-          : 'border-slate-100 bg-slate-50 text-slate-900 hover:border-slate-200 hover:bg-white'
-      }`}
+      className='border border-[#e7ddcf] bg-[#fbf7f1] px-3.5 py-3 text-left text-slate-900 transition hover:-translate-y-0.5 hover:bg-white'
     >
       <div className='flex items-start justify-between gap-3'>
         <div>
-          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>
-            {label}
-          </p>
-          <p className={`mt-1.5 text-[18px] font-semibold tracking-tight ${isActive ? 'text-white' : 'text-slate-900'}`}>{value}</p>
+          <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400'>{label}</p>
+          <p className='mt-1.5 text-[18px] font-semibold tracking-tight text-slate-900'>{value}</p>
         </div>
-        <div className={`rounded-2xl p-1 shadow-sm ${isActive ? 'bg-white/10 ring-1 ring-white/10' : 'bg-white ring-1 ring-slate-100'}`}>
-          <div className={`flex h-8 w-8 items-center justify-center rounded-2xl ${isActive ? 'bg-white/10 text-white' : iconClass}`}>
+        <div className='rounded-2xl bg-white p-1 shadow-sm ring-1 ring-[#eadfce]'>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-2xl ${iconClass}`}>
             <DashboardIcon icon={icon} size={18} />
           </div>
         </div>
       </div>
-    </motion.button>
+    </motion.div>
   )
 }
 
@@ -252,7 +243,7 @@ const CategoryMetricCard = ({ label, value, icon, cardClass, iconClass, active, 
       variants={itemVariants}
       whileHover={{ y: -3 }}
       onClick={onClick}
-      className={`rounded-2xl px-3 py-2.5 text-left shadow-sm ring-1 transition ${cardClass} ${
+      className={`px-3 py-2.5 text-left shadow-sm ring-1 transition ${cardClass} ${
         active ? 'ring-slate-900/20 shadow-[0_14px_30px_rgba(15,23,42,0.12)]' : 'ring-transparent'
       }`}
     >
@@ -369,11 +360,9 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
   const queryClient = useQueryClient()
   const {
     period,
-    activeMetric,
     selectedOrderId,
     selectedCategory,
     setPeriod,
-    setActiveMetric,
     setSelectedOrderId,
     setSelectedCategory,
   } = useDashboardStore((state) => state)
@@ -578,9 +567,9 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
     <div className='w-full px-4 py-4 md:px-6 xl:px-8'>
       <motion.div transition={{ duration: 0.2 }} className='mb-4 flex flex-wrap items-center justify-between gap-3'>
         <div>
-          <p className='text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b7c6e]'>Executive Overview</p>
-          <h1 className='mt-1 font-["Outfit"] text-[24px] font-semibold tracking-tight text-[#191714]'>Premium commerce command center</h1>
-          <p className='mt-1 text-sm text-[#6d6257]'>Cleaner hierarchy, quieter luxury palette and tighter information flow.</p>
+          <Badge variant='outline' className='mb-2 bg-white/70 text-[#8b7c6e]'>
+            Executive Overview
+          </Badge>
         </div>
 
         <div className='flex flex-wrap items-center gap-3'>
@@ -590,26 +579,30 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
           <DashboardAction
             icon='mdi:refresh'
             onClick={handleRefresh}
-            className='border-slate-900 bg-slate-900 text-white hover:bg-slate-800 hover:text-white'
+            className='bg-[#1f1a17] text-white hover:bg-[#2a221d] hover:text-white'
           >
             {dashboardQuery.isFetching ? 'Refreshing...' : 'Refresh Data'}
           </DashboardAction>
         </div>
       </motion.div>
 
-      <div className='overflow-x-auto pb-1'>
-        <div className='flex min-w-[900px] gap-4'>
+      <div className='overflow-x-auto pb-1 no-scrollbar'>
+        <div className='flex min-w-[900px] flex-nowrap gap-4'>
           {topMetrics.map((metric, index) => (
-            <div key={metric.key} className='min-w-[280px] flex-1'>
+            <div key={metric.key} className='min-w-[260px] flex-1 basis-0'>
               <StatCard {...metric} palette={topCardPalettes[index]} />
             </div>
           ))}
         </div>
       </div>
 
-      <div className='mt-4 overflow-x-auto pb-1'>
-        <div className='flex min-w-[1240px] items-stretch gap-4'>
-          <motion.div variants={itemVariants} className='min-w-[760px] flex-[1.65] rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm'>
+      <div className='mt-4 overflow-x-auto pb-1 no-scrollbar'>
+        <div className='flex min-w-[1180px] flex-nowrap items-stretch gap-4'>
+          <motion.div variants={itemVariants} className='min-w-[760px] flex-[1.55] basis-0'>
+          <Card className='relative overflow-hidden rounded-none border-[#dbc4a5] bg-[linear-gradient(180deg,rgba(255,255,255,0.99)_0%,rgba(248,239,225,0.98)_100%)] p-4 shadow-[0_28px_60px_rgba(31,26,23,0.10)]'>
+            <div className='pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-[linear-gradient(90deg,rgba(207,168,92,0),rgba(207,168,92,0.95),rgba(207,168,92,0))]' />
+            <div className='pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(233,203,148,0.28),transparent_68%)]' />
+            <CardContent className='p-0'>
             <div className='flex flex-wrap items-start justify-between gap-4'>
               <PanelHeader
                 eyebrow='Revenue Analysis'
@@ -619,14 +612,16 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
                 iconClass='bg-[#EFF6FF] text-[#2563EB]'
               />
 
-              <div className='flex items-center gap-2 rounded-full bg-slate-100 p-1'>
+              <div className='flex items-center gap-1 border border-[#dcc29a] bg-[linear-gradient(180deg,rgba(255,252,247,0.98)_0%,rgba(244,235,220,0.96)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_12px_28px_rgba(31,26,23,0.08)] backdrop-blur'>
                 {PERIODS.map((option) => (
                   <button
                     key={option.value}
                     type='button'
                     onClick={() => setPeriod(option.value)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                      period === option.value ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    className={`min-w-[52px] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] transition ${
+                      period === option.value
+                        ? 'bg-[linear-gradient(180deg,#2a221d_0%,#15110f_100%)] text-[#f6e2b5] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_12px_22px_rgba(31,26,23,0.22)]'
+                        : 'text-[#7b6c5a] hover:bg-white/70 hover:text-[#1f1a17]'
                     }`}
                   >
                     {option.label}
@@ -635,64 +630,72 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
               </div>
             </div>
 
-            <div className='mt-4 h-[220px] w-full'>
-              <ResponsiveContainer width='100%' height='100%'>
-                <AreaChart data={financialData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id='dashboardRevenueArea' x1='0' y1='0' x2='0' y2='1'>
-                      <stop offset='0%' stopColor='#FACC15' stopOpacity={0.42} />
-                      <stop offset='100%' stopColor='#FACC15' stopOpacity={0.03} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray='3 3' vertical={false} stroke='#E5E7EB' />
-                  <XAxis
-                    dataKey='name'
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: '#94A3B8' }}
-                    dy={10}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: '#94A3B8' }}
-                    tickFormatter={(value) => `${(value / 1000000).toFixed(0)}`}
-                  />
-                  <Tooltip
-                    cursor={{ stroke: '#FACC15', strokeWidth: 1, strokeDasharray: '4 4' }}
-                    contentStyle={{
-                      borderRadius: '16px',
-                      border: '1px solid #E5E7EB',
-                      boxShadow: '0 16px 36px rgba(15, 23, 42, 0.10)',
-                    }}
-                    formatter={(value) => [currencyFormatter.format(value), 'Revenue']}
-                  />
-                  <Area
-                    type='monotone'
-                    dataKey='revenue'
-                    stroke='#FACC15'
-                    strokeWidth={2.5}
-                    fill='url(#dashboardRevenueArea)'
-                    fillOpacity={1}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className='mt-4 border border-[#ead8bd] bg-[linear-gradient(180deg,#fffdfa_0%,#fff6e7_100%)] px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.76),0_10px_22px_rgba(31,26,23,0.04)]'>
+              <div className='h-[220px] w-full'>
+                <ResponsiveContainer width='100%' height='100%'>
+                  <AreaChart data={financialData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id='dashboardRevenueArea' x1='0' y1='0' x2='0' y2='1'>
+                        <stop offset='0%' stopColor='#FACC15' stopOpacity={0.42} />
+                        <stop offset='100%' stopColor='#FACC15' stopOpacity={0.03} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray='3 3' vertical={false} stroke='#E5E7EB' />
+                    <XAxis
+                      dataKey='name'
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#94A3B8' }}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#94A3B8' }}
+                      tickFormatter={(value) => `${(value / 1000000).toFixed(0)}`}
+                    />
+                    <Tooltip
+                      cursor={{ stroke: '#FACC15', strokeWidth: 1, strokeDasharray: '4 4' }}
+                      contentStyle={{
+                        borderRadius: '16px',
+                        border: '1px solid #E5E7EB',
+                        boxShadow: '0 16px 36px rgba(15, 23, 42, 0.10)',
+                      }}
+                      formatter={(value) => [currencyFormatter.format(value), 'Revenue']}
+                    />
+                    <Area
+                      type='monotone'
+                      dataKey='revenue'
+                      stroke='#FACC15'
+                      strokeWidth={2.5}
+                      fill='url(#dashboardRevenueArea)'
+                      fillOpacity={1}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className='mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4'>
-              {chartMetrics.map((metric) => (
-                <MiniMetric
-                  key={metric.key}
-                  {...metric}
-                  isActive={activeMetric === metric.key}
-                  onClick={() => setActiveMetric(metric.key)}
-                />
-              ))}
+            <div className='mt-3 overflow-x-auto pb-1 no-scrollbar'>
+              <div className='flex min-w-[760px] flex-nowrap gap-3'>
+                {chartMetrics.map((metric) => (
+                  <div key={metric.key} className='min-w-[175px] flex-1 basis-0'>
+                    <MiniMetric
+                      {...metric}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
+            </CardContent>
+          </Card>
           </motion.div>
 
-          <div className='flex min-w-[460px] w-[460px] flex-col gap-4'>
-            <motion.div variants={itemVariants} className='rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm'>
+            <motion.div variants={itemVariants} className='min-w-[360px] flex-[0.78] basis-0'>
+              <Card className='relative overflow-hidden rounded-none border-[#dbc4a5] bg-[linear-gradient(180deg,rgba(255,255,255,0.99)_0%,rgba(248,239,225,0.98)_100%)] p-4 shadow-[0_28px_60px_rgba(31,26,23,0.10)]'>
+                <div className='pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-[linear-gradient(90deg,rgba(207,168,92,0),rgba(207,168,92,0.95),rgba(207,168,92,0))]' />
+                <div className='pointer-events-none absolute -right-8 top-6 h-28 w-28 rounded-full bg-[#f4e1b9]/45 blur-3xl' />
+                <CardContent className='p-0'>
               <PanelHeader
                 eyebrow='Category Mix'
                 title='Catalog weight by segment'
@@ -701,52 +704,54 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
                 iconClass='bg-[#FFF8DB] text-[#D69E00]'
               />
 
-              <div className='mt-4 flex items-center gap-3'>
-                <div className='relative mx-auto h-[132px] w-[132px] shrink-0'>
-                  <ResponsiveContainer width='100%' height='100%'>
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx='50%'
-                        cy='50%'
-                        innerRadius={34}
-                        outerRadius={54}
-                        paddingAngle={4}
-                        dataKey='value'
-                        stroke='none'
-                      >
-                        {categoryData.map((entry, index) => (
-                          <Cell key={`${entry?.name || entry?._id || index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: '16px',
-                          border: '1px solid #E5E7EB',
-                          boxShadow: '0 16px 36px rgba(15, 23, 42, 0.10)',
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className='pointer-events-none absolute inset-0 flex flex-col items-center justify-center'>
-                    <span className='text-[10px] uppercase tracking-[0.16em] text-slate-400'>Total</span>
-                    <span className='mt-1 text-lg font-semibold text-slate-900'>{categoryTotal}</span>
+              <div className='mt-4 border border-[#ead8bd] bg-[linear-gradient(180deg,#fffdf9_0%,#fff6e7_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.76),0_10px_22px_rgba(31,26,23,0.04)]'>
+                <div className='flex items-center gap-3'>
+                  <div className='relative mx-auto h-[132px] w-[132px] shrink-0 border border-[#efe1cb] bg-[linear-gradient(180deg,rgba(255,255,255,0.95)_0%,rgba(250,243,233,0.92)_100%)] p-2 shadow-[0_18px_36px_rgba(31,26,23,0.08)]'>
+                    <ResponsiveContainer width='100%' height='100%'>
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx='50%'
+                          cy='50%'
+                          innerRadius={34}
+                          outerRadius={54}
+                          paddingAngle={4}
+                          dataKey='value'
+                          stroke='none'
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`${entry?.name || entry?._id || index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            borderRadius: '16px',
+                            border: '1px solid #E5E7EB',
+                            boxShadow: '0 16px 36px rgba(15, 23, 42, 0.10)',
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className='pointer-events-none absolute inset-0 flex flex-col items-center justify-center'>
+                      <span className='text-[10px] uppercase tracking-[0.16em] text-slate-400'>Total</span>
+                      <span className='mt-1 text-lg font-semibold text-slate-900'>{categoryTotal}</span>
+                    </div>
                   </div>
-                </div>
 
-                <div className='grid flex-1 grid-cols-2 gap-2'>
-                  {categorySummary.map((item) => (
-                    <CategoryMetricCard
-                      key={item.label}
-                      {...item}
-                      active={selectedCategoryLabel === item.label}
-                      onClick={() => setSelectedCategory(item.label)}
-                    />
-                  ))}
+                  <div className='grid flex-1 grid-cols-2 gap-2'>
+                    {categorySummary.map((item) => (
+                      <CategoryMetricCard
+                        key={item.label}
+                        {...item}
+                        active={selectedCategoryLabel === item.label}
+                        onClick={() => setSelectedCategory(item.label)}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className='mt-3 rounded-2xl bg-slate-50 px-4 py-3'>
+              <div className='mt-3 border border-[#e4d1b1] bg-[linear-gradient(180deg,#fffdf8_0%,#fff7ec_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_12px_24px_rgba(31,26,23,0.05)]'>
                 <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400'>Focused Category</p>
                 <div className='mt-2 flex items-end justify-between gap-4'>
                   <div>
@@ -756,9 +761,15 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
                   <p className='text-lg font-semibold tracking-tight text-slate-900'>{selectedCategoryValue ?? 0}</p>
                 </div>
               </div>
+                </CardContent>
+              </Card>
             </motion.div>
+        </div>
+      </div>
 
-            <motion.div variants={itemVariants} className='rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm'>
+      <motion.div variants={itemVariants} className='mt-4'>
+              <Card className='rounded-none border-[#e7ddcf] bg-white/96 p-4'>
+                <CardContent className='p-0'>
               <PanelHeader
                 eyebrow='Recent Activities'
                 title='Latest orders stream'
@@ -796,13 +807,15 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
                         whileHover={{ y: -2 }}
                         type='button'
                         onClick={() => setSelectedOrderId(order?._id || null)}
-                        className={`w-full rounded-2xl px-3.5 py-3.5 text-left transition ${
-                          isSelected ? 'bg-slate-900 text-white shadow-[0_18px_42px_rgba(15,23,42,0.18)]' : 'bg-slate-50 hover:bg-slate-100'
+                        className={`w-full px-3.5 py-3.5 text-left transition ${
+                          isSelected
+                            ? 'border border-[#ddccb7] bg-[#f7efe3] text-slate-900 shadow-[0_18px_42px_rgba(31,26,23,0.08)]'
+                            : 'bg-slate-50 hover:bg-slate-100'
                         }`}
                       >
                         <div className='flex items-start gap-3'>
-                        <div className={`rounded-2xl p-1 shadow-sm ring-1 ${isSelected ? 'bg-white/10 ring-white/10' : 'bg-white/90 ring-white/80'}`}>
-                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl ${isSelected ? 'bg-white/10 text-white' : badgeClass}`}>
+                        <div className={`rounded-2xl p-1 shadow-sm ring-1 ${isSelected ? 'bg-white ring-[#eadfce]' : 'bg-white/90 ring-white/80'}`}>
+                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl ${badgeClass}`}>
                             <DashboardIcon icon='mdi:package-variant-closed' size={18} />
                           </div>
                         </div>
@@ -810,18 +823,18 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
                           <div className='min-w-0 flex-1'>
                             <div className='flex items-start justify-between gap-3'>
                               <div className='min-w-0'>
-                                <p className={`truncate text-[13.5px] font-medium ${isSelected ? 'text-white' : 'text-slate-900'}`}>{customer}</p>
-                                <p className={`mt-1 text-[10.5px] uppercase tracking-[0.16em] ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                                <p className='truncate text-[13.5px] font-medium text-slate-900'>{customer}</p>
+                                <p className={`mt-1 text-[10.5px] uppercase tracking-[0.16em] ${isSelected ? 'text-[#8b7761]' : 'text-slate-400'}`}>
                                   #{String(order?._id || '').slice(-8).toUpperCase()}
                                 </p>
                               </div>
-                              <p className={`shrink-0 text-[13px] font-semibold ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                              <p className='shrink-0 text-[13px] font-semibold text-slate-900'>
                                 {currencyFormatter.format(Number(order?.amount) || 0)}
                               </p>
                             </div>
 
                             <div className='mt-3 flex items-center justify-between gap-3'>
-                              <p className={`text-[11px] ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                              <p className={`text-[11px] ${isSelected ? 'text-[#8b7761]' : 'text-slate-500'}`}>
                                 {order?.date
                                   ? new Date(order.date).toLocaleDateString('vi-VN', {
                                       day: '2-digit',
@@ -830,7 +843,7 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
                                     })
                                   : '-'}
                               </p>
-                              <span className={`rounded-full px-2.5 py-1 text-[10.5px] font-semibold ${isSelected ? 'bg-white/10 text-white ring-1 ring-white/10' : getStatusClass(order?.status)}`}>
+                              <span className={`rounded-full px-2.5 py-1 text-[10.5px] font-semibold ${getStatusClass(order?.status)}`}>
                                 {order?.status || 'Pending'}
                               </span>
                             </div>
@@ -841,10 +854,9 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
                   })}
                 </div>
               )}
-            </motion.div>
-          </div>
-        </div>
-      </div>
+                </CardContent>
+              </Card>
+      </motion.div>
     </div>
   )
 }
