@@ -1,12 +1,43 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import {
+  DeleteOutlined,
+  MailOutlined,
+  SearchOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from '@ant-design/icons'
+import {
+  Avatar,
+  Button,
+  Card,
+  ConfigProvider,
+  Empty,
+  Input,
+  Popconfirm,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+} from 'antd'
 import { backendUrl as defaultBackendUrl } from '../config'
+import {
+  adminAntdTheme,
+  compactStatCardClass,
+  compactStatsRowClass,
+  getSelectPopupContainer,
+  pageShellClass,
+} from '../lib/adminAntd'
+
+const { Title, Text } = Typography
 
 const Customers = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [removingId, setRemovingId] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
 
   const apiBaseUrl = useMemo(
     () => (backendUrlFromProps || defaultBackendUrl || '').trim().replace(/\/+$/, ''),
@@ -62,9 +93,6 @@ const Customers = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
 
   const handleRemove = async (id) => {
     if (!id || removingId || !apiBaseUrl || !token) return
-    
-    // Add a simple confirmation dialog for safety
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
 
     try {
       setRemovingId(id)
@@ -91,66 +119,183 @@ const Customers = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
     }
   }
 
-  // Get initials for avatar
   const getInitials = (name) => {
-    if (!name) return 'U'
-    return name.charAt(0).toUpperCase()
+    const trimmed = String(name || '').trim()
+    if (!trimmed) return 'U'
+    return trimmed.charAt(0).toUpperCase()
   }
 
-  return (
-    <div className='w-full px-4 py-6 md:px-6'>
-      <p className='mb-4 text-xl font-semibold text-gray-800'>Customers Management</p>
+  const filteredUsers = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase()
+    if (!keyword) return users
 
-      <div className='w-full max-w-[1020px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-        <div className='grid grid-cols-[80px_2fr_2fr_1fr_90px] items-center border-b border-gray-200 bg-gradient-to-r from-gray-50 via-white to-gray-50 px-4 py-3 text-[13px] font-semibold text-gray-700'>
-          <span>Avatar</span>
-          <span>Name</span>
-          <span>Email</span>
-          <span>ID</span>
-          <span className='text-center'>Action</span>
-        </div>
+    return users.filter((user) => {
+      const haystack = [user?.name, user?.email, user?.role].filter(Boolean).join(' ').toLowerCase()
+      return haystack.includes(keyword)
+    })
+  }, [searchTerm, users])
 
-        {loading ? (
-          <div className='grid grid-cols-[80px_2fr_2fr_1fr_90px] px-4 py-8 text-center text-sm text-gray-500'>
-            <span className='col-span-5'>Loading users...</span>
-          </div>
-        ) : users.length === 0 ? (
-          <div className='grid grid-cols-[80px_2fr_2fr_1fr_90px] px-4 py-8 text-center text-sm text-gray-500'>
-            <span className='col-span-5'>No users found.</span>
-          </div>
-        ) : (
-          users.map((user, index) => (
-            <div
-              key={user._id}
-              className={`grid min-h-[70px] grid-cols-[80px_2fr_2fr_1fr_90px] items-center border-b border-gray-100 px-4 py-2 text-[13px] text-gray-700 transition-colors ${
-                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'
-              } hover:bg-rose-50/50`}
+  const stats = useMemo(() => {
+    const customers = users.filter((item) => item?.role === 'Customer').length
+    const staff = users.filter((item) => item?.role === 'Admin' || item?.role === 'Employee').length
+    const unnamed = users.filter((item) => !String(item?.name || '').trim()).length
+
+    return [
+      {
+        key: 'total',
+        title: 'Total Accounts',
+        value: users.length,
+        icon: <TeamOutlined style={{ color: '#ec4899' }} />,
+      },
+      {
+        key: 'customers',
+        title: 'Customers',
+        value: customers,
+        icon: <UserOutlined style={{ color: '#2563eb' }} />,
+      },
+      {
+        key: 'staff',
+        title: 'Staff Records',
+        value: staff,
+        icon: <TeamOutlined style={{ color: '#16a34a' }} />,
+      },
+      {
+        key: 'unnamed',
+        title: 'Missing Names',
+        value: unnamed,
+        icon: <MailOutlined style={{ color: '#f97316' }} />,
+      },
+    ]
+  }, [users])
+
+  const columns = useMemo(
+    () => [
+      {
+        title: 'Customer',
+        key: 'customer',
+        width: 280,
+        render: (_, user) => (
+          <Space size={12}>
+            <Avatar
+              style={{
+                backgroundColor: user?.role === 'Customer' ? '#eff6ff' : '#fff1f2',
+                color: user?.role === 'Customer' ? '#2563eb' : '#e11d48',
+                fontWeight: 700,
+              }}
             >
-              <div className='flex justify-start'>
-                <div className='flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-pink-100 text-pink-600 border border-pink-200 font-bold'>
-                  {getInitials(user.name)}
-                </div>
-              </div>
-
-              <span className='pr-3 font-medium text-gray-700'>{user.name || 'No Name'}</span>
-              <span className='text-gray-600 truncate pr-3'>{user.email}</span>
-              <span className='text-xs text-gray-400 font-mono truncate pr-2'>{user._id.slice(-6)}</span>
-
-              <div className='text-center'>
-                <button
-                  onClick={() => handleRemove(user._id)}
-                  disabled={removingId === user._id}
-                  className='inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-base font-semibold leading-none text-gray-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40'
-                  title="Delete User"
-                >
-                  {removingId === user._id ? '...' : 'X'}
-                </button>
+              {getInitials(user?.name)}
+            </Avatar>
+            <div>
+              <Text strong style={{ color: '#0f172a' }}>
+                {user?.name || 'No Name'}
+              </Text>
+              <div>
+                <Text type='secondary' style={{ fontSize: 12 }}>
+                  ID: #{String(user?._id || '').slice(-6).toUpperCase()}
+                </Text>
               </div>
             </div>
-          ))
-        )}
+          </Space>
+        ),
+      },
+      {
+        title: 'Email',
+        dataIndex: 'email',
+        key: 'email',
+        render: (email) => (
+          <Space size={8}>
+            <MailOutlined style={{ color: '#94a3b8' }} />
+            <Text style={{ color: '#475569' }}>{email || '-'}</Text>
+          </Space>
+        ),
+      },
+      {
+        title: 'Role',
+        dataIndex: 'role',
+        key: 'role',
+        width: 140,
+        render: (role) => (
+          <Tag color={role === 'Customer' ? 'blue' : role === 'Admin' ? 'magenta' : 'green'} style={{ borderRadius: 999, fontWeight: 600 }}>
+            {role || 'Unknown'}
+          </Tag>
+        ),
+      },
+      {
+        title: 'Action',
+        key: 'action',
+        width: 110,
+        align: 'center',
+        render: (_, user) => (
+          <Popconfirm
+            title='Delete account'
+            description='This will permanently remove the selected user account.'
+            okText='Delete'
+            cancelText='Cancel'
+            okButtonProps={{ danger: true, loading: removingId === user?._id }}
+            onConfirm={() => handleRemove(user?._id)}
+          >
+            <Button type='text' shape='circle' danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        ),
+      },
+    ],
+    [removingId],
+  )
+
+  return (
+    <ConfigProvider theme={adminAntdTheme} getPopupContainer={getSelectPopupContainer}>
+      <div className={pageShellClass}>
+        <div className='mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between'>
+          <div>
+            <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
+              Customer Accounts
+            </Title>
+            <Text type='secondary'>Review registered accounts, search profiles and remove invalid records when needed.</Text>
+          </div>
+
+          <Input
+            size='large'
+            placeholder='Search name, email or role'
+            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+            style={{ width: 320, maxWidth: '100%' }}
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+          />
+        </div>
+
+        <div className={compactStatsRowClass}>
+          {stats.map((item) => (
+            <Card key={item.key} bordered={false} className={compactStatCardClass}>
+              <Statistic title={item.title} value={item.value} prefix={item.icon} valueStyle={{ color: '#0f172a' }} />
+            </Card>
+          ))}
+        </div>
+
+        <Card
+          bordered={false}
+          className='shadow-sm'
+          title={
+            <div>
+              <div className='font-semibold text-slate-900'>Accounts Directory</div>
+              <div className='text-xs font-normal text-slate-400'>Live user records returned from the current account endpoint.</div>
+            </div>
+          }
+        >
+          <Table
+            rowKey='_id'
+            columns={columns}
+            dataSource={filteredUsers}
+            loading={loading}
+            size='middle'
+            pagination={{ pageSize: 7, showSizeChanger: false, size: 'small' }}
+            scroll={{ x: 860 }}
+            locale={{
+              emptyText: <Empty description='No users found' image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+            }}
+          />
+        </Card>
       </div>
-    </div>
+    </ConfigProvider>
   )
 }
 

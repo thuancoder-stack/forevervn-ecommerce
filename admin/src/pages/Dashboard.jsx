@@ -1,28 +1,382 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import axios from 'axios'
+import { z } from 'zod'
+import { motion } from 'framer-motion'
+import { Icon } from '@iconify/react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-toastify'
 import { backendUrl as defaultBackendUrl } from '../config'
-import { DollarSign, ShoppingBag, Boxes, CircleCheckBig, Package, TrendingUp, PieChart as PieIcon, Download, HandCoins, Activity, Users, Clock, Database } from 'lucide-react'
-import { 
-  ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, Legend, AreaChart, Area
+import { useDashboardStore } from '../store/useDashboardStore'
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts'
 
-const COLORS = ['#0ea5e9', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
+const PIE_COLORS = ['#8BD1FF', '#FFE066', '#FBC4AB', '#C7F0DB', '#C4B5FD', '#FDBA74']
+const PERIODS = [
+  { value: '6m', label: '6M' },
+  { value: '12m', label: '12M' },
+  { value: 'all', label: 'ALL' },
+]
+
+const numberLike = z
+  .union([z.number(), z.string(), z.null(), z.undefined()])
+  .transform((value) => {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  })
+
+const stringLike = z
+  .union([z.string(), z.number(), z.null(), z.undefined()])
+  .transform((value) => (value == null ? '' : String(value)))
+
+const statSchema = z
+  .object({
+    totalRevenue: numberLike,
+    totalProfit: numberLike,
+    totalCustomers: numberLike,
+    pendingOrders: numberLike,
+    grossMargin: numberLike,
+    inventoryValue: numberLike,
+    totalProducts: numberLike,
+  })
+  .passthrough()
+
+const financialPointSchema = z
+  .object({
+    name: stringLike,
+    revenue: numberLike,
+  })
+  .passthrough()
+
+const categoryPointSchema = z
+  .object({
+    name: stringLike.optional(),
+    _id: stringLike.optional(),
+    value: numberLike,
+  })
+  .passthrough()
+
+const chartSchema = z
+  .object({
+    financial: z.array(financialPointSchema).catch([]),
+    categories: z.array(categoryPointSchema).catch([]),
+  })
+  .passthrough()
+
+const addressSchema = z
+  .object({
+    fullName: stringLike.optional(),
+    firstName: stringLike.optional(),
+    lastName: stringLike.optional(),
+  })
+  .partial()
+  .catch({})
+
+const orderSchema = z
+  .object({
+    _id: stringLike.optional(),
+    amount: numberLike,
+    date: numberLike,
+    status: stringLike.optional(),
+    address: addressSchema.optional(),
+  })
+  .passthrough()
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16, scale: 0.985 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 240,
+      damping: 22,
+      mass: 0.85,
+    },
+  },
+}
+
+const topCardPalettes = [
+  {
+    card: 'from-[#FCF8F2] to-[#F2E7D7]',
+    iconFrame: 'bg-white/92 ring-1 ring-white/80 shadow-[0_16px_36px_rgba(231,137,103,0.18)]',
+    iconWrap: 'bg-[#F6EFE5] text-[#8C6A2A]',
+    border: 'border-[#E7D8C4]',
+    glow: 'shadow-[0_18px_45px_rgba(109,86,47,0.10)]',
+  },
+  {
+    card: 'from-[#F8F4ED] to-[#EFE7DB]',
+    iconFrame: 'bg-white/92 ring-1 ring-white/80 shadow-[0_16px_36px_rgba(78,168,222,0.18)]',
+    iconWrap: 'bg-[#F3ECE1] text-[#43362C]',
+    border: 'border-[#E5D9C9]',
+    glow: 'shadow-[0_18px_45px_rgba(67,54,44,0.08)]',
+  },
+  {
+    card: 'from-[#F8F1E6] to-[#EEDFC3]',
+    iconFrame: 'bg-white/92 ring-1 ring-white/80 shadow-[0_16px_36px_rgba(214,158,0,0.18)]',
+    iconWrap: 'bg-[#FBF4E7] text-[#9A7220]',
+    border: 'border-[#E4D2B1]',
+    glow: 'shadow-[0_18px_45px_rgba(154,114,32,0.10)]',
+  },
+]
 
 const getStatusClass = (status) => {
-  if (status === 'Delivered') return 'border-emerald-200 bg-emerald-50 text-emerald-700'
-  if (status === 'Shipped' || status === 'Out for Delivery') return 'border-sky-200 bg-sky-50 text-sky-700'
-  if (status === 'Packing') return 'border-amber-200 bg-amber-50 text-amber-700'
-  if (status === 'Cancelled') return 'border-rose-200 bg-rose-50 text-rose-700'
-  return 'border-gray-200 bg-gray-50 text-gray-600'
+  if (status === 'Delivered') return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+  if (status === 'Shipped' || status === 'Out for Delivery') return 'bg-sky-50 text-sky-700 ring-1 ring-sky-100'
+  if (status === 'Packing') return 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
+  if (status === 'Cancelled') return 'bg-rose-50 text-rose-700 ring-1 ring-rose-100'
+  return 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
+}
+
+const DashboardIcon = ({ icon, size = 18, className = '' }) => (
+  <Icon icon={icon} width={size} height={size} className={className} />
+)
+
+const QueryError = ({ message, onRetry }) => (
+  <div className='rounded-[28px] border border-rose-200 bg-white px-6 py-8 text-center shadow-sm'>
+    <p className='text-base font-semibold text-slate-900'>Dashboard failed to load</p>
+    <p className='mt-2 text-sm text-slate-500'>{message}</p>
+    <button
+      type='button'
+      onClick={onRetry}
+      className='mt-4 inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800'
+    >
+      <DashboardIcon icon='mdi:refresh' size={16} />
+      Try again
+    </button>
+  </div>
+)
+
+const PanelHeader = ({ eyebrow, title, description, icon: Icon, iconClass = 'bg-slate-100 text-slate-600', action }) => (
+  <div className='flex items-start justify-between gap-3'>
+    <div className='min-w-0'>
+      <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400'>{eyebrow}</p>
+      <h2 className='mt-1 text-[18px] font-semibold tracking-tight text-slate-900'>{title}</h2>
+      {description ? <p className='mt-1 text-sm text-slate-500'>{description}</p> : null}
+    </div>
+    {action || Icon ? (
+      action || (
+        <div className='rounded-[20px] bg-white/95 p-1.5 shadow-[0_14px_32px_rgba(31,26,23,0.08)] ring-1 ring-[#efe5d8] backdrop-blur'>
+          <div className={`flex h-10 w-10 items-center justify-center rounded-[16px] shadow-inner ${iconClass}`}>
+            <DashboardIcon icon={Icon} size={18} />
+          </div>
+        </div>
+      )
+    ) : null}
+  </div>
+)
+
+const DashboardAction = ({ icon: Icon, children, className = '', ...props }) => (
+  <button
+    type='button'
+    className={`inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 ${className}`}
+    {...props}
+  >
+    <DashboardIcon icon={Icon} size={16} />
+    {children}
+  </button>
+)
+
+const StatCard = ({ label, sublabel, value, icon, palette }) => {
+  return (
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ y: -4 }}
+      className={`relative overflow-hidden rounded-[24px] border bg-gradient-to-br p-3.5 ${palette.card} ${palette.border} ${palette.glow}`}
+    >
+      <div className='relative z-10 flex items-start justify-between gap-3'>
+        <div className={`inline-flex rounded-full p-1 ${palette.iconFrame}`}>
+          <div className={`flex h-9 w-9 items-center justify-center rounded-full ${palette.iconWrap}`}>
+            <DashboardIcon icon={icon} size={16} />
+          </div>
+        </div>
+        <span className='rounded-full bg-white/72 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500'>
+          KPI
+        </span>
+      </div>
+      <div className='pointer-events-none absolute -right-8 bottom-0 h-24 w-24 rounded-full bg-white/25 blur-2xl' />
+      <div className='pointer-events-none absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-white/60' />
+      <div className='relative z-10 mt-3'>
+        <p className='text-[clamp(1.35rem,1.7vw,1.85rem)] font-semibold tracking-tight text-slate-900'>{value}</p>
+        <p className='mt-1 text-[13.5px] font-semibold text-slate-900'>{label}</p>
+        <p className='mt-0.5 text-[12px] text-slate-500'>{sublabel}</p>
+      </div>
+    </motion.div>
+  )
+}
+
+const MiniMetric = ({ label, value, icon, iconClass, isActive, onClick }) => {
+  return (
+    <motion.button
+      type='button'
+      variants={itemVariants}
+      whileHover={{ y: -3 }}
+      onClick={onClick}
+      className={`rounded-2xl border px-3.5 py-3 text-left transition ${
+        isActive
+          ? 'border-slate-900 bg-slate-900 text-white shadow-[0_16px_34px_rgba(15,23,42,0.18)]'
+          : 'border-slate-100 bg-slate-50 text-slate-900 hover:border-slate-200 hover:bg-white'
+      }`}
+    >
+      <div className='flex items-start justify-between gap-3'>
+        <div>
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>
+            {label}
+          </p>
+          <p className={`mt-1.5 text-[18px] font-semibold tracking-tight ${isActive ? 'text-white' : 'text-slate-900'}`}>{value}</p>
+        </div>
+        <div className={`rounded-2xl p-1 shadow-sm ${isActive ? 'bg-white/10 ring-1 ring-white/10' : 'bg-white ring-1 ring-slate-100'}`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-2xl ${isActive ? 'bg-white/10 text-white' : iconClass}`}>
+            <DashboardIcon icon={icon} size={18} />
+          </div>
+        </div>
+      </div>
+    </motion.button>
+  )
+}
+
+const CategoryMetricCard = ({ label, value, icon, cardClass, iconClass, active, onClick }) => {
+  return (
+    <motion.button
+      type='button'
+      variants={itemVariants}
+      whileHover={{ y: -3 }}
+      onClick={onClick}
+      className={`rounded-2xl px-3 py-2.5 text-left shadow-sm ring-1 transition ${cardClass} ${
+        active ? 'ring-slate-900/20 shadow-[0_14px_30px_rgba(15,23,42,0.12)]' : 'ring-transparent'
+      }`}
+    >
+      <div className='flex items-start gap-3'>
+        <div className='rounded-full bg-white/92 p-1 shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-white/80'>
+          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${iconClass}`}>
+            <DashboardIcon icon={icon} size={14} />
+          </div>
+        </div>
+        <div className='min-w-0'>
+          <p className='truncate text-[12.5px] font-medium text-slate-900'>{label}</p>
+          <p className='mt-1 text-[19px] font-semibold leading-none tracking-tight text-slate-900'>{value}</p>
+        </div>
+      </div>
+    </motion.button>
+  )
+}
+
+const getCustomerName = (address = {}) =>
+  address?.fullName || [address?.firstName, address?.lastName].filter(Boolean).join(' ') || 'Unknown customer'
+
+const buildCategorySummary = (categoryData) => {
+  const preferredMatchers = [
+    /^(men|man|male|nam)$/i,
+    /^(women|woman|female|nữ|nu)$/i,
+    /^(accessories|accessory|phụ kiện|phu kien)$/i,
+    /^(kids|kid|children|child|trẻ em|tre em)$/i,
+  ]
+
+  const palettes = [
+    { cardClass: 'bg-[#FDE6DC]', iconClass: 'text-[#E78967]' },
+    { cardClass: 'bg-[#D9F0FF]', iconClass: 'text-[#4EA8DE]' },
+    { cardClass: 'bg-[#FFE97D]', iconClass: 'text-[#D69E00]' },
+    { cardClass: 'bg-[#DDF7E7]', iconClass: 'text-[#3FA46A]' },
+  ]
+  const icons = ['mdi:hanger', 'mdi:account-group-outline', 'mdi:watch-variant', 'mdi:teddy-bear']
+  const picked = []
+  const used = new Set()
+
+  preferredMatchers.forEach((matcher, index) => {
+    const itemIndex = categoryData.findIndex((item, rawIndex) => {
+      const name = String(item?.name || item?._id || '').trim()
+      return !used.has(rawIndex) && matcher.test(name)
+    })
+
+    if (itemIndex >= 0) {
+      used.add(itemIndex)
+      const item = categoryData[itemIndex]
+      picked.push({
+        label: item?.name || item?._id || `Category ${index + 1}`,
+        value: item?.value || 0,
+        icon: icons[index],
+        ...palettes[index],
+      })
+    }
+  })
+
+  if (picked.length < 4) {
+    categoryData.forEach((item, index) => {
+      if (picked.length >= 4 || used.has(index)) return
+      picked.push({
+        label: item?.name || item?._id || `Category ${picked.length + 1}`,
+        value: item?.value || 0,
+        icon: icons[picked.length] || 'mdi:shape-outline',
+        ...palettes[picked.length],
+      })
+    })
+  }
+
+  return picked.slice(0, 4)
+}
+
+const parseDashboardPayload = (statsResponse, ordersResponse) => {
+  const statsResult = z
+    .object({
+      success: z.boolean().optional(),
+      stats: statSchema,
+      charts: chartSchema,
+    })
+    .safeParse(statsResponse)
+
+  const ordersResult = z
+    .object({
+      success: z.boolean().optional(),
+      orders: z.array(orderSchema).catch([]),
+    })
+    .safeParse(ordersResponse)
+
+  if (!statsResult.success) {
+    throw new Error('Dashboard stats payload is invalid')
+  }
+
+  if (!ordersResult.success) {
+    throw new Error('Recent orders payload is invalid')
+  }
+
+  return {
+    stats: statsResult.data.stats,
+    charts: statsResult.data.charts,
+    recentOrders: [...ordersResult.data.orders].sort((a, b) => b.date - a.date).slice(0, 5),
+  }
+}
+
+const fetchDashboardData = async ({ apiBaseUrl, token }) => {
+  const [statsRes, orderRes] = await Promise.all([
+    axios.get(`${apiBaseUrl}/api/dashboard/stats`, { headers: { token } }),
+    axios.post(`${apiBaseUrl}/api/order/list`, {}, { headers: { token } }),
+  ])
+
+  return parseDashboardPayload(statsRes.data, orderRes.data)
 }
 
 const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
-  const [stats, setStats] = useState(null)
-  const [charts, setCharts] = useState(null)
-  const [recentOrders, setRecentOrders] = useState([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const {
+    period,
+    activeMetric,
+    selectedOrderId,
+    selectedCategory,
+    setPeriod,
+    setActiveMetric,
+    setSelectedOrderId,
+    setSelectedCategory,
+  } = useDashboardStore((state) => state)
 
   const apiBaseUrl = useMemo(
     () => (backendUrlFromProps || defaultBackendUrl || '').trim().replace(/\/+$/, ''),
@@ -49,311 +403,446 @@ const Dashboard = ({ token, backendUrl: backendUrlFromProps }) => {
     return true
   }, [])
 
-  const fetchData = useCallback(async () => {
-    if (!apiBaseUrl || !token) {
-      setLoading(false)
-      return
-    }
-
-    try {
-      setLoading(true)
-      const [statsRes, orderRes] = await Promise.all([
-        axios.get(`${apiBaseUrl}/api/dashboard/stats`, { headers: { token } }),
-        axios.post(`${apiBaseUrl}/api/order/list`, {}, { headers: { token } }),
-      ])
-
-      if (statsRes.data?.success) {
-        setStats(statsRes.data.stats)
-        setCharts(statsRes.data.charts)
-      }
-
-      if (orderRes.data?.success) {
-        const sorted = (orderRes.data.orders || []).sort((a,b) => b.date - a.date).slice(0, 5);
-        setRecentOrders(sorted)
-      }
-    } catch (error) {
-      const message = error.response?.data?.message || error.message || 'Cannot load dashboard'
-      if (handleUnauthorized(message)) return
-      toast.error(message)
-    } finally {
-      setLoading(false)
-    }
-  }, [apiBaseUrl, handleUnauthorized, token])
+  const dashboardQuery = useQuery({
+    queryKey: ['dashboard', apiBaseUrl, token],
+    queryFn: () => fetchDashboardData({ apiBaseUrl, token }),
+    enabled: Boolean(apiBaseUrl && token),
+    staleTime: 45000,
+    refetchOnWindowFocus: false,
+  })
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    if (!dashboardQuery.error) return
 
-  const handleExport = useCallback(async () => {
-    if (!apiBaseUrl || !token) return;
-    try {
-      const response = await axios.get(`${apiBaseUrl}/api/dashboard/export-orders`, {
-        headers: { token },
-        responseType: 'blob' // Important for file download
-      });
-      
-      const url = window.URL.createObjectURL(new Blob(['\uFEFF' + response.data], { type: 'text/csv;charset=utf-8;' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'DonHang_BaoCao.csv');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success('Xuất báo cáo thành công!');
-    } catch (error) {
-       toast.error('Lỗi xuất báo cáo!');
-    }
-  }, [apiBaseUrl, token]);
+    const message =
+      dashboardQuery.error?.response?.data?.message ||
+      dashboardQuery.error?.message ||
+      'Cannot load dashboard'
 
-  const totals = useMemo(() => {
+    if (handleUnauthorized(message)) return
+    toast.error(message)
+  }, [dashboardQuery.error, handleUnauthorized])
+
+  const data = dashboardQuery.data
+  const stats = data?.stats
+  const charts = data?.charts
+  const recentOrders = data?.recentOrders || []
+
+  const topMetrics = useMemo(() => {
     if (!stats) return []
+
     return [
       {
+        key: 'revenue',
         label: 'Gross Revenue',
-        value: currencyFormatter.format(stats.totalRevenue),
-        note: `Total sales`,
-        icon: DollarSign,
-        color: 'text-indigo-600',
-        bg: 'bg-indigo-50',
+        sublabel: 'Store sales',
+        value: currencyFormatter.format(stats.totalRevenue || 0),
+        icon: 'mdi:cash-multiple',
       },
       {
-        label: 'Cost of Goods Sold',
-        value: currencyFormatter.format(stats.totalCOGS || 0),
-        note: `Total direct costs`,
-        icon: ShoppingBag,
-        color: 'text-rose-600',
-        bg: 'bg-rose-50',
-      },
-      {
+        key: 'profit',
         label: 'Gross Profit',
+        sublabel: 'Net after COGS',
         value: currencyFormatter.format(stats.totalProfit || 0),
-        note: `Revenue - COGS`,
-        icon: HandCoins,
-        color: 'text-emerald-600',
-        bg: 'bg-emerald-50',
+        icon: 'mdi:trending-up',
       },
       {
-        label: 'Gross Margin',
-        value: `${stats.grossMargin || 0}%`,
-        note: `Profitability Ratio`,
-        icon: TrendingUp,
-        color: 'text-sky-600',
-        bg: 'bg-sky-50',
-      },
-      {
-        label: 'Inventory Value',
-        value: currencyFormatter.format(stats.inventoryValue || 0),
-        note: `${stats.totalStockQty || 0} items in stock`,
-        icon: Database,
-        color: 'text-orange-600',
-        bg: 'bg-orange-50',
-      },
-      {
-        label: 'Total Customers',
+        key: 'customers',
+        label: 'Customers',
+        sublabel: 'Registered user',
         value: stats.totalCustomers || 0,
-        note: `Registered Users`,
-        icon: Users,
-        color: 'text-blue-600',
-        bg: 'bg-blue-50',
-      },
-      {
-        label: 'Pending Orders',
-        value: stats.pendingOrders || 0,
-        note: `Awaiting action`,
-        icon: Clock,
-        color: 'text-amber-600',
-        bg: 'bg-amber-50',
-      },
-      {
-        label: 'Live Products',
-        value: stats.totalProducts,
-        note: `Items in catalog`,
-        icon: Boxes,
-        color: 'text-violet-600',
-        bg: 'bg-violet-50',
+        icon: 'mdi:account-group-outline',
       },
     ]
   }, [currencyFormatter, stats])
 
-  const getCustomerName = (address = {}) =>
-    address?.fullName || [address?.firstName, address?.lastName].filter(Boolean).join(' ') || 'Unknown customer'
+  const chartMetrics = useMemo(() => {
+    if (!stats) return []
 
-  if (loading && !stats) return <div className="p-10 text-center text-slate-500 font-medium animate-pulse">Loading dashboard statistics...</div>
+    return [
+      {
+        key: 'orders',
+        label: 'Pending Orders',
+        value: stats.pendingOrders || 0,
+        icon: 'mdi:clock-outline',
+        iconClass: 'bg-emerald-100 text-emerald-600',
+      },
+      {
+        key: 'margin',
+        label: 'Gross Margin',
+        value: `${stats.grossMargin || 0}%`,
+        icon: 'mdi:chart-line',
+        iconClass: 'bg-violet-100 text-violet-600',
+      },
+      {
+        key: 'inventory',
+        label: 'Inventory Value',
+        value: currencyFormatter.format(stats.inventoryValue || 0),
+        icon: 'mdi:database-outline',
+        iconClass: 'bg-cyan-100 text-cyan-600',
+      },
+      {
+        key: 'products',
+        label: 'Live Products',
+        value: stats.totalProducts || 0,
+        icon: 'mdi:package-variant-closed',
+        iconClass: 'bg-amber-100 text-amber-600',
+      },
+    ]
+  }, [currencyFormatter, stats])
+
+  const financialData = useMemo(() => {
+    const source = charts?.financial || []
+    if (period === '6m') return source.slice(-6)
+    if (period === '12m') return source.slice(-12)
+    return source
+  }, [charts?.financial, period])
+
+  const categoryData = useMemo(() => charts?.categories || [], [charts?.categories])
+  const categorySummary = useMemo(() => buildCategorySummary(categoryData), [categoryData])
+  const categoryTotal = useMemo(
+    () => categoryData.reduce((total, item) => total + Number(item?.value || 0), 0),
+    [categoryData],
+  )
+
+  const selectedCategoryLabel = selectedCategory || categorySummary[0]?.label || null
+
+  const selectedCategoryValue = useMemo(() => {
+    if (!selectedCategoryLabel) return null
+    return categorySummary.find((item) => item.label === selectedCategoryLabel)?.value ?? null
+  }, [categorySummary, selectedCategoryLabel])
+
+  const handleExport = useCallback(async () => {
+    if (!apiBaseUrl || !token) return
+
+    try {
+      const response = await axios.get(`${apiBaseUrl}/api/dashboard/export-orders`, {
+        headers: { token },
+        responseType: 'blob',
+      })
+
+      const url = window.URL.createObjectURL(
+        new Blob(['\uFEFF' + response.data], { type: 'text/csv;charset=utf-8;' }),
+      )
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'DonHang_BaoCao.csv')
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success('Report exported successfully')
+    } catch {
+      toast.error('Failed to export report')
+    }
+  }, [apiBaseUrl, token])
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['dashboard', apiBaseUrl, token] })
+  }, [apiBaseUrl, queryClient, token])
+
+  const isInitialLoading = dashboardQuery.isLoading && !dashboardQuery.data
+
+  if (isInitialLoading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className='grid gap-4 px-4 py-5 md:px-8'
+      >
+        <div className='grid gap-4 md:grid-cols-3'>
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className='h-[132px] animate-pulse rounded-[26px] bg-white shadow-sm' />
+          ))}
+        </div>
+        <div className='grid gap-4 xl:grid-cols-[1.6fr_0.95fr]'>
+          <div className='h-[420px] animate-pulse rounded-[30px] bg-white shadow-sm' />
+          <div className='h-[420px] animate-pulse rounded-[30px] bg-white shadow-sm' />
+        </div>
+        <div className='h-[320px] animate-pulse rounded-[30px] bg-white shadow-sm' />
+      </motion.div>
+    )
+  }
+
+  if (dashboardQuery.isError && !dashboardQuery.data) {
+    return (
+      <div className='px-4 py-5 md:px-8'>
+        <QueryError
+          message={dashboardQuery.error?.message || 'Cannot load dashboard right now.'}
+          onRetry={handleRefresh}
+        />
+      </div>
+    )
+  }
 
   return (
-    <div className='w-full px-4 py-8 md:px-8'>
-      <div className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+    <div className='w-full px-4 py-4 md:px-6 xl:px-8'>
+      <motion.div transition={{ duration: 0.2 }} className='mb-4 flex flex-wrap items-center justify-between gap-3'>
         <div>
-          <h1 className='text-2xl font-bold text-slate-900'>Financial Dashboard</h1>
-          <p className='text-sm text-slate-500 mt-1'>Visual store performance and sales analysis.</p>
+          <p className='text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b7c6e]'>Executive Overview</p>
+          <h1 className='mt-1 font-["Outfit"] text-[24px] font-semibold tracking-tight text-[#191714]'>Premium commerce command center</h1>
+          <p className='mt-1 text-sm text-[#6d6257]'>Cleaner hierarchy, quieter luxury palette and tighter information flow.</p>
         </div>
-        <div className="flex items-center gap-3">
-            <button
-              onClick={handleExport}
-              className='inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50'
-            >
-              <Download size={16} />
-              Export CSV
-            </button>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className='inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-200 transition-all hover:-translate-y-0.5 hover:bg-slate-800 disabled:opacity-60'
-            >
-              <Activity size={16} className="mr-2" />
-              {loading ? 'Refreshing...' : 'Refresh Data'}
-            </button>
+
+        <div className='flex flex-wrap items-center gap-3'>
+          <DashboardAction icon='mdi:download' onClick={handleExport}>
+            Export CSV
+          </DashboardAction>
+          <DashboardAction
+            icon='mdi:refresh'
+            onClick={handleRefresh}
+            className='border-slate-900 bg-slate-900 text-white hover:bg-slate-800 hover:text-white'
+          >
+            {dashboardQuery.isFetching ? 'Refreshing...' : 'Refresh Data'}
+          </DashboardAction>
+        </div>
+      </motion.div>
+
+      <div className='overflow-x-auto pb-1'>
+        <div className='flex min-w-[900px] gap-4'>
+          {topMetrics.map((metric, index) => (
+            <div key={metric.key} className='min-w-[280px] flex-1'>
+              <StatCard {...metric} palette={topCardPalettes[index]} />
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className='mb-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
-        {totals.map(({ label, value, note, icon: Icon, color, bg }) => (
-          <div key={label} className='group flex flex-col rounded-[24px] border border-slate-100 bg-white p-6 shadow-sm transition-all hover:border-slate-200 hover:shadow-xl hover:shadow-slate-100/50'>
-            <div className='flex items-center justify-between pb-4'>
-              <h3 className='text-[13px] font-semibold uppercase tracking-wider text-slate-400'>{label}</h3>
-              <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${bg} transition-transform group-hover:scale-110`}>
-                <Icon size={20} className={color} />
+      <div className='mt-4 overflow-x-auto pb-1'>
+        <div className='flex min-w-[1240px] items-stretch gap-4'>
+          <motion.div variants={itemVariants} className='min-w-[760px] flex-[1.65] rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm'>
+            <div className='flex flex-wrap items-start justify-between gap-4'>
+              <PanelHeader
+                eyebrow='Revenue Analysis'
+                title='Sales movement with tighter control'
+                description='Switch the visible range without reloading the whole page.'
+                icon='mdi:chart-timeline-variant'
+                iconClass='bg-[#EFF6FF] text-[#2563EB]'
+              />
+
+              <div className='flex items-center gap-2 rounded-full bg-slate-100 p-1'>
+                {PERIODS.map((option) => (
+                  <button
+                    key={option.value}
+                    type='button'
+                    onClick={() => setPeriod(option.value)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                      period === option.value ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className='text-3xl font-bold text-slate-900 tracking-tight'>{value}</div>
-            <p className='mt-3 text-xs font-medium text-slate-400'>{note}</p>
-          </div>
-        ))}
-      </div>
 
-      {/* Charts Section */}
-      <div className='grid gap-8 lg:grid-cols-3 mb-12'>
-         <div className="lg:col-span-2 rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-8">
-               <h3 className="text-lg font-bold text-slate-900">Revenue Analysis</h3>
-               <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
-                  <span className="h-2 w-2 rounded-full bg-sky-500"></span>
-                  Last 12 Months
-               </div>
+            <div className='mt-4 h-[220px] w-full'>
+              <ResponsiveContainer width='100%' height='100%'>
+                <AreaChart data={financialData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id='dashboardRevenueArea' x1='0' y1='0' x2='0' y2='1'>
+                      <stop offset='0%' stopColor='#FACC15' stopOpacity={0.42} />
+                      <stop offset='100%' stopColor='#FACC15' stopOpacity={0.03} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray='3 3' vertical={false} stroke='#E5E7EB' />
+                  <XAxis
+                    dataKey='name'
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#94A3B8' }}
+                    dy={10}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#94A3B8' }}
+                    tickFormatter={(value) => `${(value / 1000000).toFixed(0)}`}
+                  />
+                  <Tooltip
+                    cursor={{ stroke: '#FACC15', strokeWidth: 1, strokeDasharray: '4 4' }}
+                    contentStyle={{
+                      borderRadius: '16px',
+                      border: '1px solid #E5E7EB',
+                      boxShadow: '0 16px 36px rgba(15, 23, 42, 0.10)',
+                    }}
+                    formatter={(value) => [currencyFormatter.format(value), 'Revenue']}
+                  />
+                  <Area
+                    type='monotone'
+                    dataKey='revenue'
+                    stroke='#FACC15'
+                    strokeWidth={2.5}
+                    fill='url(#dashboardRevenueArea)'
+                    fillOpacity={1}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-            <div className="h-[360px] w-full">
-               <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={charts?.financial || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.12}/>
-                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorCogs" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} dy={15} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`} />
-                    <Tooltip 
-                      cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
-                      contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', padding: '12px 16px' }}
-                      formatter={(value, name) => [currencyFormatter.format(value), name.charAt(0).toUpperCase() + name.slice(1)]}
-                    />
-                    <Legend verticalAlign="top" height={40} iconType="circle" wrapperStyle={{fontSize: '12px', fontWeight: 500}} />
-                    <Area type="monotone" dataKey="revenue" stroke="#0ea5e9" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
-                    <Area type="monotone" dataKey="cogs" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorCogs)" />
-                  </ComposedChart>
-               </ResponsiveContainer>
-            </div>
-         </div>
 
-         <div className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm">
-            <div className="flex items-center gap-3 mb-8">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-50 text-pink-500">
-                  <PieIcon size={20} />
+            <div className='mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4'>
+              {chartMetrics.map((metric) => (
+                <MiniMetric
+                  key={metric.key}
+                  {...metric}
+                  isActive={activeMetric === metric.key}
+                  onClick={() => setActiveMetric(metric.key)}
+                />
+              ))}
+            </div>
+          </motion.div>
+
+          <div className='flex min-w-[460px] w-[460px] flex-col gap-4'>
+            <motion.div variants={itemVariants} className='rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm'>
+              <PanelHeader
+                eyebrow='Category Mix'
+                title='Catalog weight by segment'
+                description='Keep the most important group visible at a glance.'
+                icon='mdi:chart-donut'
+                iconClass='bg-[#FFF8DB] text-[#D69E00]'
+              />
+
+              <div className='mt-4 flex items-center gap-3'>
+                <div className='relative mx-auto h-[132px] w-[132px] shrink-0'>
+                  <ResponsiveContainer width='100%' height='100%'>
+                    <PieChart>
+                      <Pie
+                        data={categoryData}
+                        cx='50%'
+                        cy='50%'
+                        innerRadius={34}
+                        outerRadius={54}
+                        paddingAngle={4}
+                        dataKey='value'
+                        stroke='none'
+                      >
+                        {categoryData.map((entry, index) => (
+                          <Cell key={`${entry?.name || entry?._id || index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '16px',
+                          border: '1px solid #E5E7EB',
+                          boxShadow: '0 16px 36px rgba(15, 23, 42, 0.10)',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className='pointer-events-none absolute inset-0 flex flex-col items-center justify-center'>
+                    <span className='text-[10px] uppercase tracking-[0.16em] text-slate-400'>Total</span>
+                    <span className='mt-1 text-lg font-semibold text-slate-900'>{categoryTotal}</span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">Category Mix</h3>
-                  <p className="text-xs text-slate-400">Product distribution</p>
-                </div>
-            </div>
-            <div className="h-[360px] w-full">
-               <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={charts?.categories || []}
-                      cx="51%"
-                      cy="45%"
-                      innerRadius={80}
-                      outerRadius={105}
-                      paddingAngle={8}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {(charts?.categories || []).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={4} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+
+                <div className='grid flex-1 grid-cols-2 gap-2'>
+                  {categorySummary.map((item) => (
+                    <CategoryMetricCard
+                      key={item.label}
+                      {...item}
+                      active={selectedCategoryLabel === item.label}
+                      onClick={() => setSelectedCategory(item.label)}
                     />
-                    <Legend verticalAlign="bottom" height={50} iconType="circle" wrapperStyle={{fontSize: '13px', paddingTop: '20px', fontWeight: 500}} />
-                  </PieChart>
-               </ResponsiveContainer>
-            </div>
-         </div>
-      </div>
+                  ))}
+                </div>
+              </div>
 
-      <div className='max-w-[1240px]'>
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className='text-xl font-bold text-slate-900'>Recent Activities</h2>
-          <button className="text-sm font-semibold text-sky-600 hover:text-sky-700">View All</button>
-        </div>
-        
-        <div className='w-full overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm'>
-          <div className='hidden grid-cols-[80px_1fr_1fr_1fr_140px] items-center border-b border-slate-50 bg-slate-50/50 px-8 py-4 text-[13px] font-bold text-slate-400 uppercase tracking-wider md:grid'>
-            <span>Order</span>
-            <span>Customer</span>
-            <span>Date</span>
-            <span>Grand Total</span>
-            <span className='text-right'>Ship Status</span>
-          </div>
+              <div className='mt-3 rounded-2xl bg-slate-50 px-4 py-3'>
+                <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400'>Focused Category</p>
+                <div className='mt-2 flex items-end justify-between gap-4'>
+                  <div>
+                    <p className='text-sm font-medium text-slate-900'>{selectedCategoryLabel || 'No category selected'}</p>
+                    <p className='mt-1 text-xs text-slate-500'>Highlighted from the live category distribution.</p>
+                  </div>
+                  <p className='text-lg font-semibold tracking-tight text-slate-900'>{selectedCategoryValue ?? 0}</p>
+                </div>
+              </div>
+            </motion.div>
 
-          {!recentOrders || recentOrders.length === 0 ? (
-            <div className='px-8 py-16 text-center text-sm text-slate-400 font-medium italic'>
-              No recent orders found in the database.
-            </div>
-          ) : (
-            <div className='divide-y divide-slate-50'>
-              {recentOrders.map((order, index) => {
-                const customer = getCustomerName(order?.address)
-                return (
-                  <div
-                    key={order?._id}
-                    className={`grid md:grid-cols-[80px_1fr_1fr_1fr_140px] items-center px-8 py-5 text-sm transition-colors hover:bg-slate-50/80 cursor-pointer`}
-                  >
-                    <div className='hidden md:flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 group-hover:bg-white'>
-                      <Package size={22} className='text-slate-300' />
-                    </div>
-
-                    <div className='mb-2 md:mb-0'>
-                      <p className='font-bold text-slate-900'>{customer}</p>
-                      <p className='text-[11px] font-medium text-slate-400'>
-                        #{String(order?._id || '').slice(-8).toUpperCase()}
-                      </p>
-                    </div>
-
-                    <div className='mb-2 md:mb-0 text-slate-500 font-medium'>
-                      {order?.date ? new Date(order.date).toLocaleDateString('vi-VN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                    </div>
-
-                    <div className='mb-3 md:mb-0 font-bold text-slate-900'>
-                      {currencyFormatter.format(Number(order?.amount) || 0)}
-                    </div>
-
-                    <div className='md:text-right'>
-                      <span className={`inline-flex rounded-xl border px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider ${getStatusClass(order?.status)}`}>
-                        {order?.status || 'Pending'}
-                      </span>
+            <motion.div variants={itemVariants} className='rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm'>
+              <PanelHeader
+                eyebrow='Recent Activities'
+                title='Latest orders stream'
+                description={`${recentOrders.length} latest orders from the current feed.`}
+                icon='mdi:package-variant-closed'
+                iconClass='bg-[#ECFDF5] text-[#059669]'
+                action={
+                  <div className='rounded-[20px] bg-white/95 p-1.5 shadow-[0_14px_32px_rgba(15,23,42,0.08)] ring-1 ring-slate-100/90 backdrop-blur'>
+                    <div className='flex h-10 w-10 items-center justify-center rounded-[16px] bg-slate-100 text-slate-500 shadow-inner'>
+                      <DashboardIcon icon='mdi:dots-horizontal' size={18} />
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
+                }
+              />
+              {!recentOrders.length ? (
+                <div className='mt-6 rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400'>
+                  No recent orders found in the database.
+                </div>
+              ) : (
+                <div className='admin-scrollbar mt-4 max-h-[342px] space-y-2.5 overflow-y-auto pr-1'>
+                  {recentOrders.map((order, index) => {
+                    const customer = getCustomerName(order?.address)
+                    const isSelected = selectedOrderId === order?._id
+                    const badgeClass =
+                      index % 3 === 0
+                        ? 'bg-[#FDE6DC] text-[#E78967]'
+                        : index % 3 === 1
+                          ? 'bg-[#D9F0FF] text-[#4EA8DE]'
+                          : 'bg-[#DDF7E7] text-[#3FA46A]'
+
+                    return (
+                      <motion.button
+                        key={order?._id || index}
+                        variants={itemVariants}
+                        whileHover={{ y: -2 }}
+                        type='button'
+                        onClick={() => setSelectedOrderId(order?._id || null)}
+                        className={`w-full rounded-2xl px-3.5 py-3.5 text-left transition ${
+                          isSelected ? 'bg-slate-900 text-white shadow-[0_18px_42px_rgba(15,23,42,0.18)]' : 'bg-slate-50 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className='flex items-start gap-3'>
+                        <div className={`rounded-2xl p-1 shadow-sm ring-1 ${isSelected ? 'bg-white/10 ring-white/10' : 'bg-white/90 ring-white/80'}`}>
+                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl ${isSelected ? 'bg-white/10 text-white' : badgeClass}`}>
+                            <DashboardIcon icon='mdi:package-variant-closed' size={18} />
+                          </div>
+                        </div>
+
+                          <div className='min-w-0 flex-1'>
+                            <div className='flex items-start justify-between gap-3'>
+                              <div className='min-w-0'>
+                                <p className={`truncate text-[13.5px] font-medium ${isSelected ? 'text-white' : 'text-slate-900'}`}>{customer}</p>
+                                <p className={`mt-1 text-[10.5px] uppercase tracking-[0.16em] ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                                  #{String(order?._id || '').slice(-8).toUpperCase()}
+                                </p>
+                              </div>
+                              <p className={`shrink-0 text-[13px] font-semibold ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                                {currencyFormatter.format(Number(order?.amount) || 0)}
+                              </p>
+                            </div>
+
+                            <div className='mt-3 flex items-center justify-between gap-3'>
+                              <p className={`text-[11px] ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                                {order?.date
+                                  ? new Date(order.date).toLocaleDateString('vi-VN', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric',
+                                    })
+                                  : '-'}
+                              </p>
+                              <span className={`rounded-full px-2.5 py-1 text-[10.5px] font-semibold ${isSelected ? 'bg-white/10 text-white ring-1 ring-white/10' : getStatusClass(order?.status)}`}>
+                                {order?.status || 'Pending'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              )}
+            </motion.div>
+          </div>
         </div>
       </div>
     </div>

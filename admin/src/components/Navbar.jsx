@@ -23,25 +23,33 @@ const Navbar = ({ setToken }) => {
   }
 
   return (
-    <nav className='flex items-center justify-between px-6 py-3 bg-white dark:bg-gray-900 transition-colors shadow-sm'>
-      <img src={logo} alt='logo' className='w-[max(12%,120px)]' />
+    <nav className='border-b border-[#e7ddcf] bg-[rgba(255,251,247,0.72)] px-6 py-4 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/80'>
+      <div className='flex items-center justify-between gap-4'>
+        <div className='flex items-center gap-4'>
+          <img src={logo} alt='logo' className='w-[min(220px,18vw)] min-w-[150px]' />
+          <div className='hidden xl:block'>
+            <p className='text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8b7c6e]'>Forever Admin</p>
+            <p className='mt-1 text-sm text-[#5f554a] dark:text-gray-400'>Refined commerce operations workspace</p>
+          </div>
+        </div>
 
-      <div className='flex items-center gap-3'>
-        <button
-          onClick={toggleDark}
-          title={dark ? 'Light mode' : 'Dark mode'}
-          className='w-9 h-9 rounded-full flex items-center justify-center border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-300 hover:border-pink-300 hover:text-pink-500 transition-all duration-200'
-        >
-          {dark ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
+        <div className='flex items-center gap-3'>
+          <button
+            onClick={toggleDark}
+            title={dark ? 'Light mode' : 'Dark mode'}
+            className='flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e7ddcf] bg-white/80 text-[#6e6257] shadow-sm hover:border-[#cab79f] hover:text-[#1f1a17] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+          >
+            {dark ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
 
-        <button
-          onClick={handleLogout}
-          className='flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white bg-pink-500 hover:bg-pink-600 active:scale-95 transition-all duration-200 shadow-sm'
-        >
-          <LogOut size={15} />
-          <span>Logout</span>
-        </button>
+          <button
+            onClick={handleLogout}
+            className='flex items-center gap-2 rounded-2xl bg-[#1f1a17] px-4 py-2.5 text-sm font-medium text-white shadow-[0_14px_30px_rgba(31,26,23,0.18)] hover:bg-[#2a221d] active:scale-[0.99]'
+          >
+            <LogOut size={15} />
+            <span>Logout</span>
+          </button>
+        </div>
       </div>
     </nav>
   )

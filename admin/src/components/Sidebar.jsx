@@ -1,7 +1,7 @@
 import React from 'react'
 import { Sidebar, Menu, MenuItem } from 'react-pro-sidebar'
 import { Link, useLocation } from 'react-router-dom'
-import { PlusCircle, List, Package, LayoutDashboard, Users, Ticket, Settings, Layers, History, ListTree, Image, MessageSquare, Zap } from 'lucide-react'
+import { PlusCircle, List, Package, LayoutDashboard, Users, Ticket, Layers, History, ListTree, Image, MessageSquare, Zap } from 'lucide-react'
 
 const ALL_NAV_ITEMS = [
   { to: '/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard', roles: ['Admin']  },
@@ -12,7 +12,6 @@ const ALL_NAV_ITEMS = [
   { to: '/sub-categories', icon: <ListTree size={18} />,    label: 'Sub-Categories', roles: ['Admin', 'Employee'] },
   { to: '/customers', icon: <Users size={18} />,           label: 'Customers', roles: ['Admin']  },
   { to: '/vouchers',  icon: <Ticket size={18} />,          label: 'Vouchers', roles: ['Admin']   },
-  { to: '/settings',  icon: <Settings size={18} />,        label: 'Settings', roles: ['Admin']   },
   { to: '/add',       icon: <PlusCircle size={18} />,      label: 'Add Items', roles: ['Admin', 'Employee']  },
   { to: '/list',      icon: <List size={18} />,            label: 'List Items', roles: ['Admin', 'Employee'] },
   { to: '/orders',    icon: <Package size={18} />,         label: 'Orders', roles: ['Admin', 'Employee']     },
@@ -35,12 +34,21 @@ const SidebarComponent = () => {
 
   const navItems = ALL_NAV_ITEMS.filter(item => item.roles.includes(role));
 
+  const isItemActive = (to) => {
+    if (to === '/add') {
+      return ['/add', '/add-item', '/add-items'].includes(location.pathname)
+    }
+    return location.pathname === to
+  }
+
   return (
     <Sidebar
       rootStyles={{
         height: '100vh',
-        borderRight: '1px solid #f0f0f0',
-        backgroundColor: '#ffffff',
+        borderRight: '1px solid #e7ddcf',
+        background: 'rgba(255,251,247,0.82)',
+        backdropFilter: 'blur(18px)',
+        width: '244px',
       }}
     >
       <Menu
@@ -49,19 +57,22 @@ const SidebarComponent = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
-            padding: '12px 20px',
-            margin: '4px 12px',
-            borderRadius: '10px',
-            fontSize: '14px',
-            fontWeight: active ? '600' : '400',
-            color: active ? '#ec4899' : '#6b7280',
-            backgroundColor: active ? '#fdf2f8' : 'transparent',
-            border: active ? '1px solid #fbcfe8' : '1px solid transparent',
-            transition: 'all 0.2s ease',
+            padding: '11px 18px',
+            margin: '5px 12px',
+            borderRadius: '16px',
+            fontSize: '13.5px',
+            fontWeight: active ? '600' : '500',
+            color: active ? '#1f1a17' : '#746b61',
+            backgroundColor: active ? '#f8f1e8' : 'transparent',
+            border: active ? '1px solid #dfcfbc' : '1px solid transparent',
+            boxShadow: active ? '0 10px 24px rgba(31, 26, 23, 0.06)' : 'none',
             '&:hover': {
-              backgroundColor: '#fdf2f8',
-              color: '#ec4899',
+              backgroundColor: '#fbf6ef',
+              color: '#1f1a17',
             },
+          }),
+          icon: ({ active }) => ({
+            color: active ? '#8a6a1f' : '#8b7c6e',
           }),
         }}
       >
@@ -70,7 +81,7 @@ const SidebarComponent = () => {
             key={to}
             icon={icon}
             component={<Link to={to} />}
-            active={location.pathname === to}
+            active={isItemActive(to)}
           >
             {label}
           </MenuItem>

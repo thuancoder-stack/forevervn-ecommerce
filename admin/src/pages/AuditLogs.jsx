@@ -1,160 +1,357 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import axios from 'axios';
-import { toast } from 'react-toastify';
-import { backendUrl as defaultBackendUrl } from '../config';
-import { History, Trash2, Calendar, User, Activity } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
+import axios from 'axios'
+import { toast } from 'react-toastify'
+import { backendUrl as defaultBackendUrl } from '../config'
+import {
+  CalendarOutlined,
+  ClearOutlined,
+  ProfileOutlined,
+  SearchOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from '@ant-design/icons'
+import {
+  Button,
+  Card,
+  ConfigProvider,
+  Empty,
+  Input,
+  Segmented,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+} from 'antd'
+import {
+  adminAntdTheme,
+  compactStatCardClass,
+  compactStatsRowClass,
+  getSelectPopupContainer,
+  pageShellClass,
+} from '../lib/adminAntd'
+
+const { Title, Text } = Typography
 
 const AuditLogs = ({ token, backendUrl: backendUrlFromProps }) => {
-    const [systemLogs, setSystemLogs] = useState([]);
-    const [userLogs, setUserLogs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('system'); // 'system' | 'user'
+  const [systemLogs, setSystemLogs] = useState([])
+  const [userLogs, setUserLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('system')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [clearing, setClearing] = useState(false)
 
-    const apiBaseUrl = useMemo(
-        () => (backendUrlFromProps || defaultBackendUrl || '').trim().replace(/\/+$/, ''),
-        [backendUrlFromProps],
-    );
+  const apiBaseUrl = useMemo(
+    () => (backendUrlFromProps || defaultBackendUrl || '').trim().replace(/\/+$/, ''),
+    [backendUrlFromProps],
+  )
 
-    const fetchLogs = useCallback(async () => {
-        try {
-            setLoading(true);
-            const response = await axios.get(`${apiBaseUrl}/api/audit-log/list`, { headers: { token } });
-            if (response.data.success) {
-                setSystemLogs(response.data.logs || []);
-                setUserLogs(response.data.userBehaviors || []);
-            }
-        } catch (error) {
-            toast.error(error.message);
-        } finally {
-            setLoading(false);
-        }
-    }, [apiBaseUrl, token]);
+  const handleUnauthorized = useCallback((message) => {
+    const normalized = (message || '').toLowerCase()
+    if (!normalized.includes('not authorized')) return false
 
-    useEffect(() => {
-        fetchLogs();
-    }, [fetchLogs]);
+    toast.error('Session expired, please login again')
+    localStorage.removeItem('token')
+    setTimeout(() => window.location.reload(), 400)
+    return true
+  }, [])
 
-    const clearLogs = async () => {
-        if (!window.confirm("Bạn có chắc chắn muốn xoá toàn bộ lịch sử hệ thống?")) return;
-        try {
-            const response = await axios.post(`${apiBaseUrl}/api/audit-log/clear`, {}, { headers: { token } });
-            if (response.data.success) {
-                toast.success(response.data.message);
-                fetchLogs();
-            }
-        } catch (error) {
-            toast.error(error.message);
-        }
-    };
+  const fetchLogs = useCallback(async () => {
+    try {
+      setLoading(true)
+      const response = await axios.get(`${apiBaseUrl}/api/audit-log/list`, { headers: { token } })
+      if (response.data.success) {
+        setSystemLogs(response.data.logs || [])
+        setUserLogs(response.data.userBehaviors || [])
+      } else {
+        if (handleUnauthorized(response.data.message)) return
+        toast.error(response.data.message)
+      }
+    } catch (error) {
+      if (handleUnauthorized(error.response?.data?.message)) return
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [apiBaseUrl, handleUnauthorized, token])
 
-    const getActionColor = (action) => {
-        if (action.includes('ADD')) return 'text-emerald-500 bg-emerald-50 border-emerald-100';
-        if (action.includes('UPDATE')) return 'text-sky-500 bg-sky-50 border-sky-100';
-        if (action.includes('DELETE')) return 'text-rose-500 bg-rose-50 border-rose-100';
-        return 'text-slate-400 bg-slate-50 border-slate-100';
-    };
+  useEffect(() => {
+    fetchLogs()
+  }, [fetchLogs])
 
-    return (
-        <div className="w-full px-4 py-8 md:px-8">
-            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Activity Logs</h1>
-                    <p className="text-sm text-slate-500 mt-1">Track actions from Admins, Employees, and Customers.</p>
-                </div>
-                <button
-                    onClick={clearLogs}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white px-6 py-3 text-sm font-semibold text-rose-600 shadow-sm transition-all hover:bg-rose-600 hover:text-white"
-                >
-                    <Trash2 size={18} />
-                    Clear System Logs
-                </button>
-            </div>
+  const clearLogs = async () => {
+    if (!window.confirm('Clear all system audit logs?')) return
 
-            <div className="flex gap-2 mb-6 bg-slate-100 p-1.5 rounded-2xl w-fit">
-                <button 
-                    onClick={() => setActiveTab('system')} 
-                    className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'system' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    👨‍💻 Admin & Employee
-                </button>
-                <button 
-                    onClick={() => setActiveTab('user')} 
-                    className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'user' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    🛒 User Behaviors
-                </button>
-            </div>
+    try {
+      setClearing(true)
+      const response = await axios.post(`${apiBaseUrl}/api/audit-log/clear`, {}, { headers: { token } })
+      if (response.data.success) {
+        toast.success(response.data.message)
+        fetchLogs()
+      } else {
+        if (handleUnauthorized(response.data.message)) return
+        toast.error(response.data.message)
+      }
+    } catch (error) {
+      if (handleUnauthorized(error.response?.data?.message)) return
+      toast.error(error.message)
+    } finally {
+      setClearing(false)
+    }
+  }
 
-            <div className="w-full overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
-                <div className="hidden grid-cols-[180px_140px_1fr_180px] items-center border-b border-slate-50 bg-slate-50/50 px-8 py-4 text-[13px] font-bold text-slate-400 uppercase tracking-wider md:grid">
-                    <span>Timestamp</span>
-                    <span>{activeTab === 'system' ? 'Action' : 'Behavior'}</span>
-                    <span>Target / Details</span>
-                    <span className="text-right">{activeTab === 'system' ? 'Actor' : 'User/Guest ID'}</span>
-                </div>
+  const getActionColor = (action = '') => {
+    if (action.includes('ADD')) return 'success'
+    if (action.includes('UPDATE')) return 'processing'
+    if (action.includes('DELETE')) return 'error'
+    return 'default'
+  }
 
-                {loading ? (
-                    <div className="px-8 py-16 text-center text-sm text-slate-400 animate-pulse">Loading activity history...</div>
-                ) : activeTab === 'system' ? (
-                    systemLogs.length === 0 ? (
-                        <div className="px-8 py-16 text-center text-sm text-slate-400 font-medium italic">All quiet. No admin activity recorded yet.</div>
-                    ) : (
-                        <div className="divide-y divide-slate-50">
-                            {systemLogs.map((log) => (
-                                <div key={log._id} className="grid grid-cols-[180px_140px_1fr_180px] items-center px-8 py-5 transition-colors hover:bg-slate-50/30">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                                        <Calendar size={14} className="text-slate-300" />
-                                        {new Date(log.timestamp || log.createdAt).toLocaleString('vi-VN')}
-                                    </div>
-                                    <div>
-                                        <span className={`rounded-xl border px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${getActionColor(log.action || log.actionType)}`}>
-                                            {log.action || log.actionType}
-                                        </span>
-                                    </div>
-                                    <div className="text-sm font-medium text-slate-600 truncate pr-4">{log.description}</div>
-                                    <div className="flex items-center justify-end gap-2 text-xs font-bold text-slate-800">
-                                        <User size={14} className="text-slate-400" />
-                                        {log.userName || 'Admin'}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )
-                ) : (
-                    userLogs.length === 0 ? (
-                        <div className="px-8 py-16 text-center text-sm text-slate-400 font-medium italic">No customer usage recorded yet.</div>
-                    ) : (
-                        <div className="divide-y divide-slate-50">
-                            {userLogs.map((log) => (
-                                <div key={log._id} className="grid grid-cols-[180px_140px_1fr_180px] items-center px-8 py-5 transition-colors hover:bg-pink-50/20">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-pink-400/80">
-                                        <Activity size={14} className="text-pink-300" />
-                                        {new Date(log.createdAt || log.timestamp).toLocaleString('vi-VN')}
-                                    </div>
-                                    <div>
-                                        <span className={`rounded-xl border px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${log.actionType === 'ADD_TO_CART' || log.actionType === 'PLACE_ORDER' ? 'bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-pink-100 text-pink-600 border-pink-200'}`}>
-                                            {log.actionType}
-                                        </span>
-                                    </div>
-                                    <div className="text-sm font-medium text-slate-600 truncate pr-4">
-                                        {log.actionType === 'VIEW_PRODUCT' ? `Xem SP: ${log.targetId}` : 
-                                         log.actionType === 'SEARCH' ? `Tìm: ${log.metadata?.keyword || log.targetId}` : 
-                                         log.actionType === 'ADD_TO_CART' ? `Thêm giỏ: ${log.targetId}` :
-                                         log.actionType === 'REMOVE_FROM_CART' ? `Xoá giỏ: ${log.targetId}` :
-                                         log.description || `Hành động: ${log.targetId}`}
-                                    </div>
-                                    <div className="flex items-center justify-end gap-2 text-xs font-mono font-bold text-slate-400">
-                                        <Fingerprint size={14} className="text-slate-300" />
-                                        {log.userId || 'Guest'}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )
-                )}
-            </div>
+  const getBehaviorLabel = (log) => {
+    if (log.actionType === 'VIEW_PRODUCT') return `Viewed product: ${log.targetId}`
+    if (log.actionType === 'SEARCH') return `Search: ${log.metadata?.keyword || log.targetId}`
+    if (log.actionType === 'ADD_TO_CART') return `Added to cart: ${log.targetId}`
+    if (log.actionType === 'REMOVE_FROM_CART') return `Removed from cart: ${log.targetId}`
+    if (log.actionType === 'PLACE_ORDER') return `Placed order: ${log.targetId}`
+    return log.description || `Action: ${log.targetId || '-'}`
+  }
+
+  const filteredSystemLogs = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase()
+    if (!keyword) return systemLogs
+
+    return systemLogs.filter((log) =>
+      [log.action, log.actionType, log.description, log.userName]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(keyword),
+    )
+  }, [searchTerm, systemLogs])
+
+  const filteredUserLogs = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase()
+    if (!keyword) return userLogs
+
+    return userLogs.filter((log) =>
+      [log.actionType, log.targetId, log.userId, log.description, log.metadata?.keyword]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(keyword),
+    )
+  }, [searchTerm, userLogs])
+
+  const stats = useMemo(() => {
+    const recentCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const recentActivity =
+      systemLogs.filter((log) => new Date(log.timestamp || log.createdAt).getTime() >= recentCutoff).length +
+      userLogs.filter((log) => new Date(log.createdAt || log.timestamp).getTime() >= recentCutoff).length
+
+    return [
+      {
+        key: 'system',
+        title: 'System Logs',
+        value: systemLogs.length,
+        icon: <ProfileOutlined style={{ color: '#ec4899' }} />,
+      },
+      {
+        key: 'user',
+        title: 'User Behaviors',
+        value: userLogs.length,
+        icon: <UserOutlined style={{ color: '#2563eb' }} />,
+      },
+      {
+        key: 'recent',
+        title: 'Last 7 Days',
+        value: recentActivity,
+        icon: <CalendarOutlined style={{ color: '#16a34a' }} />,
+      },
+      {
+        key: 'actors',
+        title: 'Unique Actors',
+        value: new Set([...systemLogs.map((log) => log.userName), ...userLogs.map((log) => log.userId)].filter(Boolean)).size,
+        icon: <TeamOutlined style={{ color: '#f97316' }} />,
+      },
+    ]
+  }, [systemLogs, userLogs])
+
+  const systemColumns = useMemo(
+    () => [
+      {
+        title: 'Timestamp',
+        key: 'timestamp',
+        width: 220,
+        render: (_, log) => (
+          <Space size={8}>
+            <CalendarOutlined style={{ color: '#94a3b8' }} />
+            <Text style={{ fontSize: 12, color: '#475569' }}>
+              {new Date(log.timestamp || log.createdAt).toLocaleString('vi-VN')}
+            </Text>
+          </Space>
+        ),
+      },
+      {
+        title: 'Action',
+        key: 'action',
+        width: 170,
+        render: (_, log) => (
+          <Tag color={getActionColor(log.action || log.actionType)} style={{ borderRadius: 999, fontWeight: 700 }}>
+            {log.action || log.actionType}
+          </Tag>
+        ),
+      },
+      {
+        title: 'Description',
+        dataIndex: 'description',
+        key: 'description',
+        render: (value) => <Text style={{ color: '#475569' }}>{value}</Text>,
+      },
+      {
+        title: 'Actor',
+        key: 'actor',
+        width: 180,
+        render: (_, log) => (
+          <Space size={8}>
+            <UserOutlined style={{ color: '#94a3b8' }} />
+            <Text strong style={{ color: '#0f172a' }}>
+              {log.userName || 'Admin'}
+            </Text>
+          </Space>
+        ),
+      },
+    ],
+    [],
+  )
+
+  const userColumns = useMemo(
+    () => [
+      {
+        title: 'Timestamp',
+        key: 'timestamp',
+        width: 220,
+        render: (_, log) => (
+          <Space size={8}>
+            <CalendarOutlined style={{ color: '#94a3b8' }} />
+            <Text style={{ fontSize: 12, color: '#475569' }}>
+              {new Date(log.createdAt || log.timestamp).toLocaleString('vi-VN')}
+            </Text>
+          </Space>
+        ),
+      },
+      {
+        title: 'Behavior',
+        key: 'actionType',
+        width: 170,
+        render: (_, log) => (
+          <Tag
+            color={log.actionType === 'ADD_TO_CART' || log.actionType === 'PLACE_ORDER' ? 'success' : 'magenta'}
+            style={{ borderRadius: 999, fontWeight: 700 }}
+          >
+            {log.actionType}
+          </Tag>
+        ),
+      },
+      {
+        title: 'Details',
+        key: 'details',
+        render: (_, log) => <Text style={{ color: '#475569' }}>{getBehaviorLabel(log)}</Text>,
+      },
+      {
+        title: 'User / Guest',
+        key: 'userId',
+        width: 200,
+        render: (_, log) => (
+          <Text code style={{ fontSize: 12 }}>
+            {log.userId || 'Guest'}
+          </Text>
+        ),
+      },
+    ],
+    [],
+  )
+
+  return (
+    <ConfigProvider theme={adminAntdTheme} getPopupContainer={getSelectPopupContainer}>
+      <div className={pageShellClass}>
+        <div className='mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between'>
+          <div>
+            <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
+              Audit Trail
+            </Title>
+            <Text type='secondary'>Review system activity, staff actions and customer behavior logs from the current backend stream.</Text>
+          </div>
+          <Button danger size='large' icon={<ClearOutlined />} loading={clearing} onClick={clearLogs}>
+            Clear System Logs
+          </Button>
         </div>
-    );
-};
 
-export default AuditLogs;
+        <div className={compactStatsRowClass}>
+          {stats.map((item) => (
+            <Card key={item.key} bordered={false} className={compactStatCardClass}>
+              <Statistic title={item.title} value={item.value} prefix={item.icon} valueStyle={{ color: '#0f172a' }} />
+            </Card>
+          ))}
+        </div>
+
+        <Card bordered={false} className='mb-6 shadow-sm' bodyStyle={{ padding: 20 }}>
+          <div className='flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between'>
+            <Segmented
+              value={activeTab}
+              onChange={setActiveTab}
+              options={[
+                { label: 'Admin & Employee', value: 'system' },
+                { label: 'User Behaviors', value: 'user' },
+              ]}
+            />
+            <Input
+              size='large'
+              placeholder={`Search ${activeTab === 'system' ? 'actions' : 'behaviors'}...`}
+              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+              style={{ width: 340, maxWidth: '100%' }}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </div>
+        </Card>
+
+        <Card
+          bordered={false}
+          className='shadow-sm'
+          title={
+            <div>
+              <div className='font-semibold text-slate-900'>
+                {activeTab === 'system' ? 'System Activity Directory' : 'User Behavior Directory'}
+              </div>
+              <div className='text-xs font-normal text-slate-400'>
+                {activeTab === 'system'
+                  ? 'Audit logs generated by admins and employees.'
+                  : 'Behavior tracking stream captured from storefront users.'}
+              </div>
+            </div>
+          }
+        >
+          <Table
+            rowKey='_id'
+            columns={activeTab === 'system' ? systemColumns : userColumns}
+            dataSource={activeTab === 'system' ? filteredSystemLogs : filteredUserLogs}
+            loading={loading}
+            size='middle'
+            pagination={{ pageSize: 8, showSizeChanger: false, size: 'small' }}
+            scroll={{ x: 980 }}
+            locale={{
+              emptyText: (
+                <Empty
+                  description={activeTab === 'system' ? 'No system activity yet' : 'No user behaviors recorded yet'}
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                />
+              ),
+            }}
+          />
+        </Card>
+      </div>
+    </ConfigProvider>
+  )
+}
+
+export default AuditLogs

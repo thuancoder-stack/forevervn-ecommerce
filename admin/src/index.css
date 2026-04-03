@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Public+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Public+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,29 +8,29 @@
 :root {
   --border: rgba(15, 23, 42, 0.08);
 
-  --admin-bg: #f7f4ef;
+  --admin-bg: #f6f1e9;
   --admin-surface: #ffffff;
-  --admin-surface-soft: #f8fafc;
-  --admin-surface-muted: #efedee;
-  --admin-border: #e6e6ea;
+  --admin-surface-soft: #faf6f0;
+  --admin-surface-muted: #efe6da;
+  --admin-border: #e7ddcf;
 
-  --admin-text: #1b1c1d;
-  --admin-muted: #667085;
+  --admin-text: #191714;
+  --admin-muted: #746b61;
 
-  --admin-accent: #1f3654;
-  --admin-accent-hover: #172a44;
-  --admin-accent-soft: #edf4fb;
+  --admin-accent: #1f1a17;
+  --admin-accent-hover: #2a221d;
+  --admin-accent-soft: #f3ece3;
 
   --admin-primary-text: #ffffff;
 
-  --admin-tertiary: #6d5e00;
+  --admin-tertiary: #8a6a1f;
   --admin-success: #15803d;
   --admin-warning: #b45309;
   --admin-danger: #b91c1c;
 
   /* NEW LUXURY */
-  --admin-gradient-primary: linear-gradient(135deg, #b7004d 0%, #ff4d88 100%);
-  --admin-gradient-soft: linear-gradient(135deg, #fdf2f5 0%, #f8fafc 100%);
+  --admin-gradient-primary: linear-gradient(135deg, #1c1714 0%, #3a3028 100%);
+  --admin-gradient-soft: linear-gradient(135deg, #fbf7f1 0%, #f4ede4 100%);
 
   --admin-glass: rgba(255, 255, 255, 0.65);
   --admin-glass-border: rgba(255, 255, 255, 0.4);
@@ -90,13 +90,13 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Public Sans', sans-serif;
   color: var(--admin-text);
 
   background:
-    radial-gradient(circle at 20% 10%, rgba(255, 183, 200, 0.25), transparent 40%),
-    radial-gradient(circle at 90% 0%, rgba(180, 210, 255, 0.2), transparent 35%),
-    linear-gradient(180deg, #fffdfc 0%, #f7f4ef 50%, #eef3f8 100%);
+    radial-gradient(circle at 16% 8%, rgba(210, 182, 138, 0.16), transparent 30%),
+    radial-gradient(circle at 100% 0%, rgba(167, 145, 116, 0.12), transparent 26%),
+    linear-gradient(180deg, #fdfbf8 0%, #f6f1e9 52%, #f3ede4 100%);
 }
 
 body::before {
@@ -106,8 +106,8 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(circle at bottom left, rgba(244, 235, 225, 0.8), transparent 40%),
-    radial-gradient(circle at center right, rgba(233, 240, 248, 0.85), transparent 35%);
+    radial-gradient(circle at bottom left, rgba(241, 228, 210, 0.82), transparent 36%),
+    radial-gradient(circle at center right, rgba(247, 241, 233, 0.9), transparent 34%);
 }
 
 #root {
@@ -116,7 +116,6 @@ body::before {
 
 * {
   box-sizing: border-box;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 img {
@@ -129,7 +128,13 @@ input,
 select,
 textarea,
 a {
-  transition: all 0.2s ease;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    opacity 0.18s ease;
 }
 
 button:disabled {
@@ -147,7 +152,7 @@ button:disabled {
 }
 
 .font-label {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Public Sans', sans-serif;
 }
 
 /* ================= LAYOUT ================= */
@@ -246,7 +251,7 @@ button:disabled {
 }
 
 .admin-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #d1d5db, #9ca3af);
+  background: linear-gradient(180deg, #d6c4ad, #9f8a71);
   border-radius: 999px;
 }
 

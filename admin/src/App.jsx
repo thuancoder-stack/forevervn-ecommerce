@@ -8,7 +8,6 @@ import Employees from './pages/Employees'
 import ImportBatch from './pages/ImportBatch'
 import BulkOperation from './pages/BulkOperation'
 import Vouchers from './pages/Vouchers'
-import Settings from './pages/Settings'
 import Add from './pages/Add'
 import List from './pages/List'
 import Orders from './pages/Orders'
@@ -47,14 +46,14 @@ const App = () => {
   }
 
   return (
-    <div className='bg-gray-50 min-h-screen'>
+    <div className='min-h-screen bg-transparent'>
       <ToastContainer />
       <Navbar setToken={setToken} />
 
       <div className='flex w-full'>
         <Sidebar />
 
-        <div className='flex-1 p-4'>
+        <div className='flex-1 p-4 md:p-5 xl:p-6'>
           <Routes>
             <Route path='/' element={<Navigate to='/dashboard' replace />} />
             <Route path='/dashboard' element={<Dashboard token={token} backendUrl={backendUrl} />} />
@@ -63,8 +62,9 @@ const App = () => {
             <Route path='/bulk-operation' element={<BulkOperation token={token} backendUrl={backendUrl} />} />
             <Route path='/customers' element={<Customers token={token} setToken={setToken} backendUrl={backendUrl} />} />
             <Route path='/vouchers' element={<Vouchers token={token} setToken={setToken} backendUrl={backendUrl} />} />
-            <Route path='/settings' element={<Settings token={token} setToken={setToken} backendUrl={backendUrl} />} />
             <Route path='/add' element={<Add token={token} setToken={setToken} backendUrl={backendUrl} />} />
+            <Route path='/add-item' element={<Add token={token} setToken={setToken} backendUrl={backendUrl} />} />
+            <Route path='/add-items' element={<Add token={token} setToken={setToken} backendUrl={backendUrl} />} />
             <Route path='/update/:id' element={<Update token={token} setToken={setToken} backendUrl={backendUrl} />} />
             <Route path='/list' element={<List token={token} setToken={setToken} backendUrl={backendUrl} />} />
             <Route path='/orders' element={<Orders token={token} backendUrl={backendUrl} />} />

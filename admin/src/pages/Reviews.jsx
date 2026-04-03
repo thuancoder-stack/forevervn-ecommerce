@@ -1,305 +1,406 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { backendUrl } from '../config'
 import { toast } from 'react-toastify'
-import { Trash2, Star, User, Package, Calendar, Search, Filter, Reply, X, MessageSquare, Clock } from 'lucide-react'
+import { backendUrl as defaultBackendUrl } from '../config'
+import {
+  CalendarOutlined,
+  CommentOutlined,
+  DeleteOutlined,
+  MessageOutlined,
+  RollbackOutlined,
+  SearchOutlined,
+  StarOutlined,
+  UserOutlined,
+} from '@ant-design/icons'
+import {
+  Avatar,
+  Button,
+  Card,
+  ConfigProvider,
+  Empty,
+  Image,
+  Input,
+  Modal,
+  Popconfirm,
+  Rate,
+  Space,
+  Statistic,
+  Tag,
+  Typography,
+} from 'antd'
+import {
+  adminAntdTheme,
+  compactStatCardClass,
+  compactStatsRowClass,
+  getSelectPopupContainer,
+  nativeSelectClass,
+  pageShellClass,
+} from '../lib/adminAntd'
 
-const Reviews = ({ token }) => {
-    const [list, setList] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [searchTerm, setSearchTerm] = useState('')
-    const [dateFilter, setDateFilter] = useState('all') // all, today, week
-    const [sortOrder, setSortOrder] = useState('newest') // newest, oldest
-    
-    // Reply State
-    const [replyingId, setReplyingId] = useState(null)
-    const [replyText, setReplyText] = useState('')
+const { Title, Text, Paragraph } = Typography
 
-    const fetchList = async () => {
-        try {
-            setLoading(true)
-            const response = await axios.get(backendUrl + "/api/review-user/list")
-            if (response.data.success) {
-                setList(response.data.reviews)
-            } else {
-                toast.error(response.data.message)
-            }
-        } catch (error) {
-            console.log(error)
-            toast.error(error.message)
-        } finally {
-            setLoading(false)
-        }
+const Reviews = ({ token, backendUrl: backendUrlFromProps }) => {
+  const [list, setList] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [dateFilter, setDateFilter] = useState('all')
+  const [sortOrder, setSortOrder] = useState('newest')
+  const [replyingId, setReplyingId] = useState(null)
+  const [replyText, setReplyText] = useState('')
+  const [replySubmitting, setReplySubmitting] = useState(false)
+  const [removingId, setRemovingId] = useState('')
+
+  const apiBaseUrl = useMemo(
+    () => (backendUrlFromProps || defaultBackendUrl || '').trim().replace(/\/+$/, ''),
+    [backendUrlFromProps],
+  )
+
+  const handleUnauthorized = useCallback((message) => {
+    const normalized = (message || '').toLowerCase()
+    if (!normalized.includes('not authorized')) return false
+
+    toast.error('Session expired, please login again')
+    localStorage.removeItem('token')
+    setTimeout(() => window.location.reload(), 400)
+    return true
+  }, [])
+
+  const fetchList = useCallback(async () => {
+    try {
+      setLoading(true)
+      const response = await axios.get(`${apiBaseUrl}/api/review-user/list`)
+      if (response.data.success) {
+        setList(response.data.reviews)
+      } else {
+        toast.error(response.data.message)
+      }
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
     }
+  }, [apiBaseUrl])
 
-    const deleteReview = async (id) => {
-        if (!window.confirm("Bạn có chắc chắn muốn xoá đánh giá này vĩnh viễn không?")) return;
-        try {
-            const response = await axios.post(backendUrl + '/api/review-user/delete', { id }, { headers: { token } })
-            if (response.data.success) {
-                toast.success(response.data.message)
-                fetchList()
-            } else {
-                toast.error(response.data.message)
-            }
-        } catch (error) {
-            console.log(error)
-            toast.error(error.message)
-        }
-    }
+  useEffect(() => {
+    fetchList()
+  }, [fetchList])
 
-    const submitReply = async (id) => {
-        if (!replyText.trim()) return;
-        try {
-            const response = await axios.post(backendUrl + '/api/review-user/reply', { id, reply: replyText }, { headers: { token } })
-            if (response.data.success) {
-                toast.success("Đã gửi phản hồi thành công!")
-                setReplyingId(null)
-                setReplyText('')
-                fetchList()
-            } else {
-                toast.error(response.data.message)
-            }
-        } catch (error) {
-            toast.error("Lỗi phản hồi!")
-        }
-    }
-
-    useEffect(() => {
+  const deleteReview = async (id) => {
+    try {
+      setRemovingId(id)
+      const response = await axios.post(`${apiBaseUrl}/api/review-user/delete`, { id }, { headers: { token } })
+      if (response.data.success) {
+        toast.success(response.data.message)
         fetchList()
-    }, [])
+      } else {
+        if (handleUnauthorized(response.data.message)) return
+        toast.error(response.data.message)
+      }
+    } catch (error) {
+      if (handleUnauthorized(error.response?.data?.message)) return
+      toast.error(error.message)
+    } finally {
+      setRemovingId('')
+    }
+  }
 
-    const filteredList = useMemo(() => {
-        let result = [...list];
+  const submitReply = async () => {
+    if (!replyText.trim() || !replyingId) return
 
-        // 1. Search Filter (Product Name or UserName or Comment)
-        if (searchTerm.trim()) {
-            const lowerSearch = searchTerm.toLowerCase();
-            result = result.filter(item => 
-                (item.productId?.name || '').toLowerCase().includes(lowerSearch) ||
-                (item.userName || '').toLowerCase().includes(lowerSearch) ||
-                (item.comment || '').toLowerCase().includes(lowerSearch)
-            );
-        }
+    try {
+      setReplySubmitting(true)
+      const response = await axios.post(
+        `${apiBaseUrl}/api/review-user/reply`,
+        { id: replyingId, reply: replyText },
+        { headers: { token } },
+      )
 
-        // 2. Date Filter
-        const now = Date.now();
-        if (dateFilter === 'today') {
-            result = result.filter(item => (now - item.date) <= 24 * 60 * 60 * 1000);
-        } else if (dateFilter === 'week') {
-            result = result.filter(item => (now - item.date) <= 7 * 24 * 60 * 60 * 1000);
-        }
+      if (response.data.success) {
+        toast.success('Reply sent successfully')
+        setReplyingId(null)
+        setReplyText('')
+        fetchList()
+      } else {
+        if (handleUnauthorized(response.data.message)) return
+        toast.error(response.data.message)
+      }
+    } catch (error) {
+      if (handleUnauthorized(error.response?.data?.message)) return
+      toast.error('Failed to send reply')
+    } finally {
+      setReplySubmitting(false)
+    }
+  }
 
-        // 3. Sorting
-        result.sort((a, b) => {
-            if (sortOrder === 'newest') return b.date - a.date;
-            return a.date - b.date;
-        });
+  const openReplyModal = useCallback((item) => {
+    setReplyingId(item._id)
+    setReplyText(item.adminReply || '')
+  }, [])
 
-        return result;
-    }, [list, searchTerm, dateFilter, sortOrder]);
+  const filteredList = useMemo(() => {
+    let result = [...list]
 
-    const getSafeImage = (img) => {
-        if (Array.isArray(img)) return img[0];
-        return img;
-    };
+    if (searchTerm.trim()) {
+      const lowerSearch = searchTerm.toLowerCase()
+      result = result.filter(
+        (item) =>
+          (item.productId?.name || '').toLowerCase().includes(lowerSearch) ||
+          (item.userName || '').toLowerCase().includes(lowerSearch) ||
+          (item.comment || '').toLowerCase().includes(lowerSearch),
+      )
+    }
 
-    return (
-        <div className='p-4 sm:p-8 bg-slate-50 min-h-screen'>
-            {/* Header section */}
-            <div className='mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4'>
-                <div>
-                    <h2 className='text-4xl font-black text-slate-900 tracking-tight'>Đánh giá khách hàng</h2>
-                    <p className='text-slate-500 mt-2 font-medium'>Xây dựng uy tín bằng cách phản hồi chân thành.</p>
-                </div>
-                <div className='flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm'>
-                    <MessageSquare className='text-indigo-500' size={20} />
-                    <span className='text-slate-700 font-bold'>{filteredList.length} <span className='text-slate-400 font-medium'>Kết quả</span></span>
-                </div>
-            </div>
+    const now = Date.now()
+    if (dateFilter === 'today') {
+      result = result.filter((item) => now - item.date <= 24 * 60 * 60 * 1000)
+    } else if (dateFilter === 'week') {
+      result = result.filter((item) => now - item.date <= 7 * 24 * 60 * 60 * 1000)
+    }
 
-            {/* Filters bar */}
-            <div className='mb-8 flex flex-wrap items-center gap-4'>
-                <div className='relative flex-1 min-w-[280px]'>
-                    <Search className='absolute left-4 top-1/2 -translate-y-1/2 text-slate-400' size={18} />
-                    <input 
-                        type="text" 
-                        placeholder="Tìm theo tên sản phẩm, khách hàng..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className='w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all shadow-sm font-medium'
-                    />
-                </div>
+    result.sort((a, b) => {
+      if (sortOrder === 'newest') return b.date - a.date
+      return a.date - b.date
+    })
 
-                <div className='flex items-center gap-3 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm'>
-                    <div className='flex items-center gap-2 px-3 text-slate-400'>
-                        <Filter size={16} />
-                        <span className='text-xs font-bold uppercase tracking-wider'>Lọc:</span>
-                    </div>
-                    <select 
-                        value={dateFilter} 
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        className='bg-slate-50 text-slate-700 text-sm font-bold py-2 px-4 rounded-xl border-none outline-none cursor-pointer hover:bg-slate-100 transition-colors'
-                    >
-                        <option value="all">Tất cả thời gian</option>
-                        <option value="today">Hôm nay</option>
-                        <option value="week">7 ngày qua</option>
-                    </select>
-                </div>
+    return result
+  }, [dateFilter, list, searchTerm, sortOrder])
 
-                <div className='flex items-center gap-3 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm'>
-                    <div className='flex items-center gap-2 px-3 text-slate-400'>
-                        <Clock size={16} />
-                        <span className='text-xs font-bold uppercase tracking-wider'>Xếp:</span>
-                    </div>
-                    <select 
-                        value={sortOrder} 
-                        onChange={(e) => setSortOrder(e.target.value)}
-                        className='bg-slate-50 text-slate-700 text-sm font-bold py-2 px-4 rounded-xl border-none outline-none cursor-pointer hover:bg-slate-100 transition-colors'
-                    >
-                        <option value="newest">Mới nhất</option>
-                        <option value="oldest">Cũ nhất</option>
-                    </select>
-                </div>
-            </div>
+  const stats = useMemo(() => {
+    const replied = list.filter((item) => Boolean(item.adminReply)).length
+    const withImages = list.filter((item) => Array.isArray(item.images) && item.images.length > 0).length
+    const avgRating = list.length
+      ? (list.reduce((sum, item) => sum + Number(item.rating || 0), 0) / list.length).toFixed(1)
+      : '0.0'
 
-            {loading ? (
-                <div className='flex justify-center items-center h-64'>
-                    <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600'></div>
-                </div>
-            ) : (
-                <div className='space-y-6'>
-                    {filteredList.length === 0 ? (
-                        <div className='bg-white p-20 text-center rounded-[32px] border border-slate-100 shadow-sm'>
-                            <div className='w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4'>
-                                <Search size={32} className='text-slate-200' />
-                            </div>
-                            <p className='text-slate-400 font-bold'>Không tìm thấy đánh giá nào phù hợp.</p>
-                        </div>
-                    ) : (
-                        filteredList.map((item, index) => (
-                            <div key={index} className='group bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300'>
-                                <div className='flex flex-col lg:flex-row'>
-                                    {/* Product & User Side */}
-                                    <div className='lg:w-1/4 p-6 bg-slate-50/50 border-b lg:border-b-0 lg:border-r border-slate-100 flex flex-col gap-4'>
-                                        <div className='flex items-center gap-4'>
-                                            <img 
-                                                style={{ width: '64px', height: '64px', minWidth: '64px' }} 
-                                                className='object-cover rounded-xl border border-white shadow-sm flex-shrink-0' 
-                                                src={getSafeImage(item.productId?.image) || 'https://dummyimage.com/100'} 
-                                                alt="" 
-                                            />
-                                            <div className='flex-1 min-w-0'>
-                                                <p className='text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate'>Sản phẩm</p>
-                                                <h4 className='text-xs font-bold text-slate-900 truncate'>{item.productId?.name || 'Unknown Product'}</h4>
-                                            </div>
-                                        </div>
+    return [
+      {
+        key: 'total',
+        title: 'Total Reviews',
+        value: list.length,
+        icon: <CommentOutlined style={{ color: '#ec4899' }} />,
+      },
+      {
+        key: 'rating',
+        title: 'Avg Rating',
+        value: avgRating,
+        icon: <StarOutlined style={{ color: '#f59e0b' }} />,
+      },
+      {
+        key: 'replied',
+        title: 'Replied',
+        value: replied,
+        icon: <RollbackOutlined style={{ color: '#16a34a' }} />,
+      },
+      {
+        key: 'images',
+        title: 'With Images',
+        value: withImages,
+        icon: <CalendarOutlined style={{ color: '#2563eb' }} />,
+      },
+    ]
+  }, [list])
 
-                                        <div className='flex items-center gap-4 pt-4 border-t border-slate-100'>
-                                            <div className='w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-100'>
-                                                <User size={20} className='text-slate-400' />
-                                            </div>
-                                            <div>
-                                                <p className='text-xs font-bold text-slate-400 uppercase tracking-tight'>Khách hàng</p>
-                                                <h4 className='text-sm font-bold text-slate-900'>{item.userName}</h4>
-                                            </div>
-                                        </div>
+  const activeReplyItem = useMemo(
+    () => filteredList.find((item) => item._id === replyingId) || list.find((item) => item._id === replyingId),
+    [filteredList, list, replyingId],
+  )
 
-                                        <div className='mt-auto flex items-center justify-between pt-4 border-t border-slate-100'>
-                                            <div className='flex items-center gap-1'>
-                                                {[...Array(5)].map((_, i) => (
-                                                    <Star key={i} size={14} fill={i < item.rating ? "#fbbf24" : "none"} stroke={i < item.rating ? "#fbbf24" : "#cbd5e1"} />
-                                                ))}
-                                            </div>
-                                            <div className='text-[10px] font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100'>
-                                               {new Date(item.date).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                    </div>
+  const getSafeImage = (img) => {
+    if (Array.isArray(img)) return img[0]
+    return img
+  }
 
-                                    {/* Content Area */}
-                                    <div className='flex-1 p-8 flex flex-col'>
-                                        <div className='flex justify-between items-start gap-4 mb-4'>
-                                            <p className='text-slate-700 text-lg leading-relaxed font-medium italic'>"{item.comment}"</p>
-                                            <button 
-                                                onClick={() => deleteReview(item._id)}
-                                                className='shrink-0 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all'
-                                                title='Xoá vĩnh viễn'
-                                            >
-                                                <Trash2 size={20} />
-                                            </button>
-                                        </div>
-
-                                        {/* Review Images - Smaller */}
-                                        {item.images && item.images.length > 0 && (
-                                            <div className='flex gap-2 pb-6'>
-                                                {item.images.map((img, i) => (
-                                                    <img 
-                                                        key={i} 
-                                                        style={{ width: '48px', height: '48px', minWidth: '48px' }}
-                                                        className='object-cover rounded-xl border border-slate-50 shadow-sm flex-shrink-0' 
-                                                        src={img} 
-                                                        alt="" 
-                                                    />
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {/* Admin Reply Section */}
-                                        <div className='mt-auto pt-6 border-t border-slate-50'>
-                                            {item.adminReply ? (
-                                                <div className='bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50 relative'>
-                                                    <div className='flex items-center gap-2 mb-2'>
-                                                        <Reply size={16} className='text-indigo-500 -scale-x-100' />
-                                                        <span className='text-[10px] font-black uppercase text-indigo-400 tracking-widest'>Phản hồi từ cửa hàng</span>
-                                                        <span className='ml-auto text-[10px] text-indigo-300'>{new Date(item.replyDate).toLocaleDateString()}</span>
-                                                    </div>
-                                                    <p className='text-indigo-900 text-sm font-medium leading-relaxed'>{item.adminReply}</p>
-                                                    <button 
-                                                        onClick={() => { setReplyingId(item._id); setReplyText(item.adminReply); }}
-                                                        className='absolute top-4 right-4 text-[10px] font-bold text-indigo-400 hover:text-indigo-600 uppercase underline'
-                                                    >
-                                                        Sửa
-                                                    </button>
-                                                </div>
-                                            ) : replyingId === item._id ? (
-                                                <div className='space-y-3 animate-in fade-in slide-in-from-top-2'>
-                                                    <textarea 
-                                                        autoFocus
-                                                        value={replyText}
-                                                        onChange={(e) => setReplyText(e.target.value)}
-                                                        placeholder="Nhập nội dung phản hồi khách hàng..."
-                                                        className='w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:border-indigo-400 transition-all min-h-[100px]'
-                                                    />
-                                                    <div className='flex justify-end gap-2'>
-                                                        <button onClick={() => setReplyingId(null)} className='px-4 py-2 text-xs font-bold text-slate-400 uppercase hover:text-slate-600'>Hủy</button>
-                                                        <button 
-                                                            onClick={() => submitReply(item._id)}
-                                                            className='bg-indigo-600 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all'
-                                                        >
-                                                            Gửi phản hồi
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <button 
-                                                    onClick={() => setReplyingId(item._id)}
-                                                    className='flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition-colors group'
-                                                >
-                                                    <Reply size={18} className='group-hover:-translate-x-1 transition-transform' />
-                                                    <span className='text-sm font-bold'>Phản hồi đánh giá này</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            )}
+  return (
+    <ConfigProvider theme={adminAntdTheme} getPopupContainer={getSelectPopupContainer}>
+      <div className={pageShellClass}>
+        <div className='mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between'>
+          <div>
+            <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
+              Review Moderation
+            </Title>
+            <Text type='secondary'>Track customer feedback, respond to reviews and remove invalid content when necessary.</Text>
+          </div>
+          <Tag color='magenta' style={{ borderRadius: 999, alignSelf: 'flex-start', paddingInline: 12, paddingBlock: 6, fontWeight: 700 }}>
+            {filteredList.length} results
+          </Tag>
         </div>
-    )
+
+        <div className={compactStatsRowClass}>
+          {stats.map((item) => (
+            <Card key={item.key} bordered={false} className={compactStatCardClass}>
+              <Statistic title={item.title} value={item.value} prefix={item.icon} valueStyle={{ color: '#0f172a' }} />
+            </Card>
+          ))}
+        </div>
+
+        <Card
+          bordered={false}
+          className='mb-6 shadow-sm'
+          bodyStyle={{ padding: 20 }}
+        >
+          <div className='flex flex-col gap-4 xl:flex-row'>
+            <Input
+              size='large'
+              placeholder='Search product, customer or review text'
+              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+            <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} className={`${nativeSelectClass} min-w-[180px]`}>
+              <option value='all'>All time</option>
+              <option value='today'>Today</option>
+              <option value='week'>Last 7 days</option>
+            </select>
+            <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} className={`${nativeSelectClass} min-w-[180px]`}>
+              <option value='newest'>Newest first</option>
+              <option value='oldest'>Oldest first</option>
+            </select>
+          </div>
+        </Card>
+
+        {loading ? (
+          <Card bordered={false} className='shadow-sm'>
+            <div className='py-10 text-center text-sm text-slate-500'>Loading reviews...</div>
+          </Card>
+        ) : filteredList.length === 0 ? (
+          <Card bordered={false} className='shadow-sm'>
+            <Empty description='No matching reviews found' image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          </Card>
+        ) : (
+          <div className='space-y-4'>
+            {filteredList.map((item) => (
+              <Card key={item._id} bordered={false} className='shadow-sm'>
+                <div className='flex flex-col gap-4 xl:flex-row'>
+                  <div className='xl:w-[210px] xl:shrink-0'>
+                    <div className='flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3'>
+                      <div className='h-9 w-9 overflow-hidden rounded-lg border border-white bg-white'>
+                        <img
+                          src={getSafeImage(item.productId?.image) || 'https://dummyimage.com/100'}
+                          alt={item.productId?.name || 'Product'}
+                          width={36}
+                          height={36}
+                          className='h-full w-full object-cover'
+                        />
+                      </div>
+                      <div className='min-w-0'>
+                        <div className='text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400'>Product</div>
+                        <div className='truncate font-semibold text-slate-900'>{item.productId?.name || 'Unknown Product'}</div>
+                      </div>
+                    </div>
+
+                    <div className='mt-3 rounded-2xl border border-slate-100 bg-white p-3'>
+                      <div className='flex items-center gap-3'>
+                        <Avatar size={28} style={{ backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: 700 }} icon={<UserOutlined />}>
+                          {String(item.userName || 'U').charAt(0).toUpperCase()}
+                        </Avatar>
+                        <div>
+                          <div className='text-sm font-semibold text-slate-900'>{item.userName || 'Unknown User'}</div>
+                          <div className='text-xs text-slate-400'>{new Date(item.date).toLocaleDateString('vi-VN')}</div>
+                        </div>
+                      </div>
+
+                      <div className='mt-3 flex items-center justify-between'>
+                        <Rate disabled value={Number(item.rating) || 0} style={{ fontSize: 14, color: '#fbbf24' }} />
+                        <Tag color='blue' style={{ borderRadius: 999, fontWeight: 600 }}>
+                          {item.rating}/5
+                        </Tag>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className='min-w-0 flex-1'>
+                    <div className='flex items-start justify-between gap-4'>
+                      <Paragraph style={{ margin: 0, color: '#334155', fontSize: 14, lineHeight: 1.65 }}>"{item.comment}"</Paragraph>
+                      <Popconfirm
+                        title='Delete review'
+                        description='This will permanently remove the selected review.'
+                        okText='Delete'
+                        cancelText='Cancel'
+                        okButtonProps={{ danger: true, loading: removingId === item._id }}
+                        onConfirm={() => deleteReview(item._id)}
+                      >
+                        <Button type='text' shape='circle' danger icon={<DeleteOutlined />} />
+                      </Popconfirm>
+                    </div>
+
+                    {item.images && item.images.length > 0 ? (
+                      <div className='mt-4 flex flex-wrap gap-2.5'>
+                        {item.images.map((img, index) => (
+                          <Image
+                            key={`${item._id}-${index}`}
+                            src={img}
+                            alt='Review attachment'
+                            width={40}
+                            height={40}
+                            style={{ objectFit: 'cover', borderRadius: 10, border: '1px solid #f1f5f9' }}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <div className='mt-6 rounded-2xl border border-slate-100 bg-slate-50 p-4'>
+                      {item.adminReply ? (
+                        <div>
+                          <div className='mb-2 flex items-center justify-between gap-3'>
+                            <Space size={8}>
+                              <MessageOutlined style={{ color: '#6366f1' }} />
+                              <Text strong style={{ color: '#4338ca' }}>
+                                Store Reply
+                              </Text>
+                            </Space>
+                            <Text type='secondary' style={{ fontSize: 12 }}>
+                              {item.replyDate ? new Date(item.replyDate).toLocaleDateString('vi-VN') : ''}
+                            </Text>
+                          </div>
+                          <Paragraph style={{ margin: 0, color: '#334155' }}>{item.adminReply}</Paragraph>
+                          <Button type='link' icon={<RollbackOutlined />} style={{ paddingInline: 0, marginTop: 8 }} onClick={() => openReplyModal(item)}>
+                            Edit reply
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button type='link' icon={<RollbackOutlined />} style={{ paddingInline: 0 }} onClick={() => openReplyModal(item)}>
+                          Reply to this review
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <Modal
+          open={!!replyingId}
+          onCancel={() => {
+            setReplyingId(null)
+            setReplyText('')
+          }}
+          title='Reply to Review'
+          okText={replySubmitting ? 'Sending...' : 'Send Reply'}
+          onOk={submitReply}
+          confirmLoading={replySubmitting}
+          cancelText='Cancel'
+          destroyOnHidden
+        >
+          {activeReplyItem ? (
+            <div className='mb-4 rounded-2xl border border-slate-100 bg-slate-50 p-4'>
+              <div className='font-semibold text-slate-900'>{activeReplyItem.userName}</div>
+              <div className='mt-1 text-sm text-slate-500'>{activeReplyItem.productId?.name || 'Unknown Product'}</div>
+              <Paragraph style={{ margin: '12px 0 0', color: '#334155' }}>"{activeReplyItem.comment}"</Paragraph>
+            </div>
+          ) : null}
+
+          <Input.TextArea
+            rows={5}
+            placeholder='Write your reply to the customer'
+            value={replyText}
+            onChange={(event) => setReplyText(event.target.value)}
+          />
+        </Modal>
+      </div>
+    </ConfigProvider>
+  )
 }
 
 export default Reviews
