@@ -34,7 +34,7 @@ import {
 
 const { Title, Text } = Typography
 
-const ORDER_STATUSES = ['Order Placed', 'Packing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled']
+const ORDER_STATUSES = ['Order Placed', 'Packing', 'Shipped', 'Out for Delivery', 'Delivered', 'Received', 'Cancelled']
 const REFRESH_INTERVAL_MS = 10000
 
 const STATUS_COLORS = {
@@ -43,6 +43,7 @@ const STATUS_COLORS = {
   Shipped: 'purple',
   'Out for Delivery': 'orange',
   Delivered: 'success',
+  Received: 'success',
   Cancelled: 'error',
 }
 
@@ -259,7 +260,7 @@ const Orders = ({ token, backendUrl: backendUrlFromProps }) => {
 
   const stats = useMemo(() => {
     const pending = orders.filter((order) => ['Order Placed', 'Packing'].includes(order?.status)).length
-    const delivered = orders.filter((order) => order?.status === 'Delivered').length
+    const delivered = orders.filter((order) => ['Delivered', 'Received'].includes(order?.status)).length
     const revenue = orders
       .filter((order) => order?.status !== 'Cancelled')
       .reduce((total, order) => total + (Number(order?.amount) || 0), 0)
