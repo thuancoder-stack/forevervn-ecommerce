@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { ShopContext } from '../context/ShopContext';
+import { useLanguage } from '../context/LanguageContext';
 import Title from '../components/Title';
 import ProductItem from '../components/ProductItem';
 
@@ -15,8 +16,91 @@ const parsePrice = (price) => {
     return n < 1000 ? n * 1000 : n;
 };
 
+const copyByLanguage = {
+    vi: {
+        title1: 'TO\u00c0N B\u1ed8',
+        title2: 'B\u1ed8 S\u01afU T\u1eacP',
+        refinedDiscovery: 'Kh\u00e1m ph\u00e1 tinh ch\u1ecdn',
+        intro:
+            'B\u1ed9 s\u01b0u t\u1eadp \u0111\u01b0\u1ee3c tr\u00ecnh b\u00e0y r\u00f5 r\u00e0ng h\u01a1n v\u1edbi l\u1ecdc nhanh, s\u1eafp x\u1ebfp tr\u1ef1c quan v\u00e0 tr\u1ea3i nghi\u1ec7m duy\u1ec7t s\u1ea3n ph\u1ea9m m\u01b0\u1ee3t m\u00e0 tr\u00ean m\u1ecdi k\u00edch th\u01b0\u1edbc m\u00e0n h\u00ecnh.',
+        showFilters: 'Hi\u1ec7n b\u1ed9 l\u1ecdc',
+        hideFilters: '\u1ea8n b\u1ed9 l\u1ecdc',
+        sortRelevant: 'S\u1eafp x\u1ebfp: Li\u00ean quan',
+        sortLowHigh: 'S\u1eafp x\u1ebfp: Gi\u00e1 th\u1ea5p \u0111\u1ebfn cao',
+        sortHighLow: 'S\u1eafp x\u1ebfp: Gi\u00e1 cao \u0111\u1ebfn th\u1ea5p',
+        sortNewest: 'S\u1eafp x\u1ebfp: M\u1edbi nh\u1ea5t',
+        sortNameAZ: 'S\u1eafp x\u1ebfp: T\u00ean A-Z',
+        sortNameZA: 'S\u1eafp x\u1ebfp: T\u00ean Z-A',
+        filters: 'B\u1ed9 l\u1ecdc',
+        narrowYourStyle: 'Thu g\u1ecdn phong c\u00e1ch',
+        clearAll: 'X\u00f3a t\u1ea5t c\u1ea3',
+        priceRange: 'Kho\u1ea3ng gi\u00e1',
+        minPlaceholder: 'Gi\u00e1 t\u1eeb',
+        maxPlaceholder: 'Gi\u00e1 \u0111\u1ebfn',
+        priceHint: 'B\u1ea1n c\u00f3 th\u1ec3 nh\u1eadp 100 ho\u1eb7c 100.000.',
+        onlyBestSeller: 'Ch\u1ec9 hi\u1ec7n bestseller',
+        categories: 'Danh m\u1ee5c',
+        collapse: 'Thu g\u1ecdn',
+        viewSubCategories: 'Xem danh m\u1ee5c con',
+        productsFound: 'S\u1ea3n ph\u1ea9m t\u00ecm th\u1ea5y',
+        matchedCount: (count) => `${count} s\u1ea3n ph\u1ea9m ph\u00f9 h\u1ee3p v\u1edbi l\u1ef1a ch\u1ecdn hi\u1ec7n t\u1ea1i.`,
+        resetFilters: '\u0110\u1eb7t l\u1ea1i b\u1ed9 l\u1ecdc',
+        noProductsTitle: 'Kh\u00f4ng t\u00ecm th\u1ea5y s\u1ea3n ph\u1ea9m ph\u00f9 h\u1ee3p',
+        noProductsBody:
+            'Th\u1eed n\u1edbi r\u1ed9ng kho\u1ea3ng gi\u00e1, b\u1ecf b\u1edbt b\u1ed9 l\u1ecdc ho\u1eb7c x\u00f3a t\u1eeb kh\u00f3a t\u00ecm ki\u1ebfm \u0111\u1ec3 xem th\u00eam l\u1ef1a ch\u1ecdn.',
+        loadMore: 'Xem th\u00eam',
+        fallbackCategories: [
+            { value: 'Nam', label: 'Nam' },
+            { value: 'N\u1eef', label: 'N\u1eef' },
+            { value: 'Tr\u1ebb em', label: 'Tr\u1ebb em' },
+            { value: 'Ph\u1ee5 ki\u1ec7n', label: 'Ph\u1ee5 ki\u1ec7n' },
+        ],
+    },
+    en: {
+        title1: 'ALL',
+        title2: 'COLLECTIONS',
+        refinedDiscovery: 'Refined discovery',
+        intro:
+            'The collection is presented more clearly with quick filtering, intuitive sorting and a smoother browsing experience across every screen size.',
+        showFilters: 'Show Filters',
+        hideFilters: 'Hide Filters',
+        sortRelevant: 'Sort by: Relevant',
+        sortLowHigh: 'Sort by: Low to High',
+        sortHighLow: 'Sort by: High to Low',
+        sortNewest: 'Sort by: Newest',
+        sortNameAZ: 'Sort by: Name A-Z',
+        sortNameZA: 'Sort by: Name Z-A',
+        filters: 'Filters',
+        narrowYourStyle: 'Narrow your style',
+        clearAll: 'Clear all',
+        priceRange: 'Price Range',
+        minPlaceholder: 'Min',
+        maxPlaceholder: 'Max',
+        priceHint: 'You can type 100 or 100,000.',
+        onlyBestSeller: 'Only Bestseller',
+        categories: 'Categories',
+        collapse: 'Collapse',
+        viewSubCategories: 'View sub-categories',
+        productsFound: 'Products found',
+        matchedCount: (count) => `${count} products match your current filters.`,
+        resetFilters: 'Reset Filters',
+        noProductsTitle: 'No matching products found',
+        noProductsBody:
+            'Try widening the price range, removing some filters or clearing the search term to see more options.',
+        loadMore: 'Load More',
+        fallbackCategories: [
+            { value: 'Nam', label: 'Men' },
+            { value: 'N\u1eef', label: 'Women' },
+            { value: 'Tr\u1ebb em', label: 'Kids' },
+            { value: 'Ph\u1ee5 ki\u1ec7n', label: 'Accessories' },
+        ],
+    },
+};
+
 const Collection = () => {
     const { products, search, setSearch, categories, subCategories } = useContext(ShopContext);
+    const { language } = useLanguage();
+    const t = copyByLanguage[language];
 
     const [showFilter, setShowFilter] = useState(false);
     const [category, setCategory] = useState([]);
@@ -25,7 +109,7 @@ const Collection = () => {
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
     const [onlyBestSeller, setOnlyBestSeller] = useState(false);
-    const [expandedCategories, setExpandedCategories] = useState({}); // Track open/closed cats
+    const [expandedCategories, setExpandedCategories] = useState({});
 
     const STEP = 16;
     const [visibleCount, setVisibleCount] = useState(STEP);
@@ -52,9 +136,9 @@ const Collection = () => {
     };
 
     const toggleExpandCategory = (catName) => {
-        setExpandedCategories(prev => ({
+        setExpandedCategories((prev) => ({
             ...prev,
-            [catName]: !prev[catName]
+            [catName]: !prev[catName],
         }));
     };
 
@@ -143,6 +227,10 @@ const Collection = () => {
         onlyBestSeller,
     ]);
 
+    const categoryOptions = categories.length === 0
+        ? t.fallbackCategories.map((item) => ({ _id: item.value, name: item.value, label: item.label, _static: true }))
+        : categories.map((item) => ({ ...item, label: item.name }));
+
     const displayed = filteredAndSorted.slice(0, visibleCount);
     const hasMore = visibleCount < filteredAndSorted.length;
 
@@ -152,11 +240,11 @@ const Collection = () => {
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                         <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">
-                            Refined discovery
+                            {t.refinedDiscovery}
                         </p>
-                        <Title text1={'ALL'} text2={'COLLECTIONS'} />
+                        <Title text1={t.title1} text2={t.title2} />
                         <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base">
-                            Bộ sưu tập được trình bày rõ ràng hơn với lọc nhanh, sắp xếp trực quan và trải nghiệm duyệt sản phẩm mượt mà trên mọi kích thước màn hình.
+                            {t.intro}
                         </p>
                     </div>
 
@@ -166,7 +254,7 @@ const Collection = () => {
                             className="inline-flex items-center justify-center rounded-full border border-[var(--border)] px-5 py-3 text-sm font-semibold tracking-[0.14em] text-slate-600 hover:bg-slate-900 hover:text-white lg:hidden"
                             type="button"
                         >
-                            {showFilter ? 'Hide Filters' : 'Show Filters'}
+                            {showFilter ? t.hideFilters : t.showFilters}
                         </button>
 
                         <select
@@ -174,12 +262,12 @@ const Collection = () => {
                             onChange={(e) => setSortType(e.target.value)}
                             className="rounded-full border border-[var(--border)] bg-white px-5 py-3 text-sm font-medium text-slate-600 outline-none"
                         >
-                            <option value="relavent">Sort by: Relavent</option>
-                            <option value="low-high">Sort by: Low to High</option>
-                            <option value="high-low">Sort by: High to Low</option>
-                            <option value="newest">Sort by: Newest</option>
-                            <option value="name-az">Sort by: Name A-Z</option>
-                            <option value="name-za">Sort by: Name Z-A</option>
+                            <option value="relavent">{t.sortRelevant}</option>
+                            <option value="low-high">{t.sortLowHigh}</option>
+                            <option value="high-low">{t.sortHighLow}</option>
+                            <option value="newest">{t.sortNewest}</option>
+                            <option value="name-az">{t.sortNameAZ}</option>
+                            <option value="name-za">{t.sortNameZA}</option>
                         </select>
                     </div>
                 </div>
@@ -191,10 +279,10 @@ const Collection = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">
-                                    Filters
+                                    {t.filters}
                                 </p>
                                 <h2 className="display-font mt-2 text-2xl font-semibold text-slate-900">
-                                    Narrow your style
+                                    {t.narrowYourStyle}
                                 </h2>
                             </div>
 
@@ -203,14 +291,14 @@ const Collection = () => {
                                 className="text-sm font-semibold text-slate-500 hover:text-slate-900"
                                 type="button"
                             >
-                                Clear all
+                                {t.clearAll}
                             </button>
                         </div>
 
                         <div className="mt-6 space-y-4">
                             <div className="rounded-[24px] border border-[var(--border)] bg-white p-4">
                                 <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    Price Range
+                                    {t.priceRange}
                                 </p>
 
                                 <div className="grid grid-cols-2 gap-3">
@@ -218,18 +306,18 @@ const Collection = () => {
                                         value={minPrice}
                                         onChange={(e) => setMinPrice(e.target.value)}
                                         className="rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none"
-                                        placeholder="Min"
+                                        placeholder={t.minPlaceholder}
                                     />
                                     <input
                                         value={maxPrice}
                                         onChange={(e) => setMaxPrice(e.target.value)}
                                         className="rounded-2xl border border-[var(--border)] px-4 py-3 text-sm outline-none"
-                                        placeholder="Max"
+                                        placeholder={t.maxPlaceholder}
                                     />
                                 </div>
 
                                 <p className="mt-3 text-xs leading-6 text-slate-400">
-                                    Bạn có thể nhập <b>100</b> hoặc <b>100.000</b>.
+                                    {t.priceHint}
                                 </p>
                             </div>
 
@@ -242,30 +330,25 @@ const Collection = () => {
                                             setOnlyBestSeller(e.target.checked)
                                         }
                                     />
-                                    Only Bestseller
+                                    {t.onlyBestSeller}
                                 </label>
                             </div>
 
-                            {/* Hierarchical Categories + Sub-categories */}
                             <div className="rounded-[24px] border border-[var(--border)] bg-white p-4">
                                 <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    Categories
+                                    {t.categories}
                                 </p>
 
                                 <div className="space-y-0.5 text-sm text-slate-600">
-                                    {(categories.length === 0
-                                        ? ['Nam', 'Nữ', 'Trẻ em', 'Phụ kiện'].map(n => ({ _id: n, name: n, _static: true }))
-                                        : categories
-                                    ).map((cat) => {
+                                    {categoryOptions.map((cat) => {
                                         const catSubs = cat._static ? [] : subCategories.filter(
-                                            (s) => s.categoryId?._id === cat._id || s.categoryId === cat._id
+                                            (s) => s.categoryId?._id === cat._id || s.categoryId === cat._id,
                                         );
                                         const isExpanded = expandedCategories[cat.name];
                                         const isChecked = category.includes(cat.name);
 
                                         return (
                                             <div key={cat._id}>
-                                                {/* Category row */}
                                                 <div className="flex items-center gap-1 rounded-xl hover:bg-slate-50">
                                                     <label className="flex flex-1 cursor-pointer items-center gap-3 px-2 py-2">
                                                         <input
@@ -276,24 +359,23 @@ const Collection = () => {
                                                             className="accent-slate-900"
                                                         />
                                                         <span className={`flex-1 font-medium ${isChecked ? 'text-slate-900' : ''}`}>
-                                                            {cat.name}
+                                                            {cat.label}
                                                         </span>
                                                     </label>
                                                     {catSubs.length > 0 && (
                                                         <button
                                                             type="button"
                                                             onClick={() => toggleExpandCategory(cat.name)}
-                                                            className="mr-1 flex h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors text-base font-bold leading-none"
-                                                            title={isExpanded ? 'Thu gọn' : 'Xem danh mục con'}
+                                                            className="mr-1 flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                                                            title={isExpanded ? t.collapse : t.viewSubCategories}
                                                         >
-                                                            {isExpanded ? '−' : '+'}
+                                                            {isExpanded ? '\u2212' : '+'}
                                                         </button>
                                                     )}
                                                 </div>
 
-                                                {/* Sub-categories — shown when expanded */}
                                                 {isExpanded && catSubs.length > 0 && (
-                                                    <div className="ml-6 mt-0.5 mb-1 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                                                    <div className="mb-1 ml-6 mt-0.5 space-y-0.5 border-l-2 border-slate-100 pl-3">
                                                         {catSubs.map((sub) => (
                                                             <label
                                                                 key={sub._id}
@@ -325,10 +407,10 @@ const Collection = () => {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
-                                    Products found
+                                    {t.productsFound}
                                 </p>
                                 <p className="mt-2 text-sm text-slate-500 sm:text-base">
-                                    {filteredAndSorted.length} sản phẩm phù hợp với lựa chọn hiện tại.
+                                    {t.matchedCount(filteredAndSorted.length)}
                                 </p>
                             </div>
 
@@ -337,7 +419,7 @@ const Collection = () => {
                                 className="hidden rounded-full border border-[var(--border)] px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-900 hover:text-white lg:inline-flex"
                                 type="button"
                             >
-                                Reset Filters
+                                {t.resetFilters}
                             </button>
                         </div>
                     </div>
@@ -345,10 +427,10 @@ const Collection = () => {
                     {displayed.length === 0 ? (
                         <div className="section-shell px-6 py-12 text-center">
                             <p className="text-lg font-semibold text-slate-900">
-                                Không tìm thấy sản phẩm phù hợp
+                                {t.noProductsTitle}
                             </p>
                             <p className="mt-3 text-sm leading-7 text-slate-500">
-                                Thử nới rộng khoảng giá, bỏ bớt bộ lọc hoặc xóa từ khóa tìm kiếm để xem thêm lựa chọn.
+                                {t.noProductsBody}
                             </p>
                         </div>
                     ) : (
@@ -360,6 +442,7 @@ const Collection = () => {
                                         name={item.name}
                                         id={item._id}
                                         price={item.price}
+                                        oldPrice={item.oldPrice}
                                         image={item.image}
                                     />
                                 ))}
@@ -372,7 +455,7 @@ const Collection = () => {
                                         className="rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(15,23,42,0.16)] hover:-translate-y-0.5 hover:bg-slate-800"
                                         type="button"
                                     >
-                                        Load More
+                                        {t.loadMore}
                                     </button>
                                 </div>
                             )}

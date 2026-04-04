@@ -1,14 +1,43 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { assets } from '../assets/assets';
 import { ShopContext } from '../context/ShopContext';
+import { useLanguage } from '../context/LanguageContext';
 
-const navItems = [
-    { label: 'Home', path: '/' },
-    { label: 'Collection', path: '/collection' },
-    { label: 'About', path: '/about' },
-    { label: 'Contact', path: '/contact' },
-];
+const copyByLanguage = {
+    vi: {
+        home: 'Trang chủ',
+        collection: 'Bộ sưu tập',
+        about: 'Giới thiệu',
+        contact: 'Liên hệ',
+        account: 'Tài khoản',
+        myAccount: 'Tài khoản của tôi',
+        orders: 'Đơn hàng',
+        logout: 'Đăng xuất',
+        login: 'Đăng nhập',
+        toggleSearch: 'Mở tìm kiếm',
+        cart: 'Giỏ hàng',
+        openMenu: 'Mở menu',
+        closeMenu: 'Đóng menu',
+        language: 'Ngôn ngữ',
+    },
+    en: {
+        home: 'Home',
+        collection: 'Collection',
+        about: 'About',
+        contact: 'Contact',
+        account: 'Account',
+        myAccount: 'My Account',
+        orders: 'Orders',
+        logout: 'Logout',
+        login: 'Login',
+        toggleSearch: 'Toggle search',
+        cart: 'Cart',
+        openMenu: 'Open menu',
+        closeMenu: 'Close menu',
+        language: 'Language',
+    },
+};
 
 const Navbar = () => {
     const [visible, setVisible] = useState(false);
@@ -21,16 +50,28 @@ const Navbar = () => {
         logout,
         navigate,
     } = useContext(ShopContext);
+    const { language, setLanguage, isVietnamese } = useLanguage();
 
     const cartCount = getCartCount();
     const hideCartBadge = location.pathname === '/login';
+    const copy = copyByLanguage[language];
+
+    const navItems = useMemo(
+        () => [
+            { label: copy.home, path: '/' },
+            { label: copy.collection, path: '/collection' },
+            { label: copy.about, path: '/about' },
+            { label: copy.contact, path: '/contact' },
+        ],
+        [copy],
+    );
 
     useEffect(() => {
         setVisible(false);
     }, [location.pathname]);
 
     const navLinkClass = ({ isActive }) =>
-        `rounded-full px-4 py-2 text-sm font-semibold tracking-[0.18em] transition-all duration-300 ${
+        `rounded-full px-4 py-2 text-sm font-semibold tracking-[0.12em] transition-all duration-300 ${
             isActive
                 ? 'bg-slate-900 text-white shadow-[0_14px_30px_rgba(15,23,42,0.18)]'
                 : 'text-slate-500 hover:-translate-y-0.5 hover:bg-slate-900 hover:text-white'
@@ -47,27 +88,50 @@ const Navbar = () => {
 
                         <nav className="hidden items-center gap-2 md:flex">
                             {navItems.map((item) => (
-                                <NavLink
-                                    key={item.path}
-                                    to={item.path}
-                                    className={navLinkClass}
-                                >
+                                <NavLink key={item.path} to={item.path} className={navLinkClass}>
                                     {item.label.toUpperCase()}
                                 </NavLink>
                             ))}
                         </nav>
 
                         <div className="flex items-center gap-2 sm:gap-3">
+                            <div className="hidden items-center rounded-full border border-[var(--border)] bg-white/90 p-1 shadow-[0_10px_25px_rgba(15,23,42,0.08)] sm:flex">
+                                <button
+                                    type="button"
+                                    onClick={() => setLanguage('vi')}
+                                    className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${
+                                        isVietnamese
+                                            ? 'bg-slate-900 text-white'
+                                            : 'text-slate-500'
+                                    }`}
+                                    aria-label="Switch to Vietnamese"
+                                >
+                                    VI
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setLanguage('en')}
+                                    className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${
+                                        !isVietnamese
+                                            ? 'bg-slate-900 text-white'
+                                            : 'text-slate-500'
+                                    }`}
+                                    aria-label="Switch to English"
+                                >
+                                    EN
+                                </button>
+                            </div>
+
                             <button
                                 onClick={() => setShowSearch(!showSearch)}
                                 className="rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-950"
                                 type="button"
-                                aria-label="Toggle search"
+                                aria-label={copy.toggleSearch}
                             >
                                 <img
                                     src={assets.search_icon}
                                     className="w-4 sm:w-[18px]"
-                                    alt="Search"
+                                    alt={copy.toggleSearch}
                                 />
                             </button>
 
@@ -76,24 +140,24 @@ const Navbar = () => {
                                     <button
                                         type="button"
                                         className="rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300"
-                                        aria-label="Account"
+                                        aria-label={copy.account}
                                     >
                                         <img
                                             className="w-4 sm:w-[18px]"
                                             src={assets.profile_icon}
-                                            alt="Profile"
+                                            alt={copy.account}
                                         />
                                     </button>
                                 ) : (
                                     <Link
                                         to="/login"
                                         className="rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300"
-                                        aria-label="Login"
+                                        aria-label={copy.login}
                                     >
                                         <img
                                             className="w-4 sm:w-[18px]"
                                             src={assets.profile_icon}
-                                            alt="Profile"
+                                            alt={copy.login}
                                         />
                                     </Link>
                                 )}
@@ -106,21 +170,21 @@ const Navbar = () => {
                                                 className="w-full rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-600 hover:bg-slate-900 hover:text-white"
                                                 type="button"
                                             >
-                                                My Account
+                                                {copy.myAccount}
                                             </button>
                                             <button
                                                 onClick={() => navigate('/orders')}
                                                 className="w-full rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-600 hover:bg-slate-900 hover:text-white"
                                                 type="button"
                                             >
-                                                Orders
+                                                {copy.orders}
                                             </button>
                                             <button
                                                 onClick={logout}
                                                 className="w-full rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-600 hover:bg-slate-900 hover:text-white"
                                                 type="button"
                                             >
-                                                Logout
+                                                {copy.logout}
                                             </button>
                                         </div>
                                     </div>
@@ -131,12 +195,12 @@ const Navbar = () => {
                                 to="/cart"
                                 data-cart-target="true"
                                 className="relative rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300"
-                                aria-label="Cart"
+                                aria-label={copy.cart}
                             >
                                 <img
                                     src={assets.cart_icon}
                                     className="w-4 min-w-4 sm:w-[18px] sm:min-w-[18px]"
-                                    alt="Cart"
+                                    alt={copy.cart}
                                 />
                                 {!hideCartBadge && cartCount > 0 && (
                                     <p className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1 text-[10px] font-semibold text-white">
@@ -149,13 +213,9 @@ const Navbar = () => {
                                 onClick={() => setVisible(true)}
                                 className="rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300 md:hidden"
                                 type="button"
-                                aria-label="Open menu"
+                                aria-label={copy.openMenu}
                             >
-                                <img
-                                    src={assets.menu_icon}
-                                    className="w-4"
-                                    alt="Menu"
-                                />
+                                <img src={assets.menu_icon} className="w-4" alt={copy.openMenu} />
                             </button>
                         </div>
                     </div>
@@ -181,9 +241,33 @@ const Navbar = () => {
                             onClick={() => setVisible(false)}
                             className="rounded-full border border-[var(--border)] p-3"
                             type="button"
-                            aria-label="Close menu"
+                            aria-label={copy.closeMenu}
                         >
-                            <img src={assets.cross_icon} className="w-3" alt="Close" />
+                            <img src={assets.cross_icon} className="w-3" alt={copy.closeMenu} />
+                        </button>
+                    </div>
+
+                    <div className="mt-6 flex items-center gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                            {copy.language}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setLanguage('vi')}
+                            className={`rounded-full px-3 py-2 text-xs font-semibold uppercase ${
+                                isVietnamese ? 'bg-slate-900 text-white' : 'border border-[var(--border)] text-slate-500'
+                            }`}
+                        >
+                            VI
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setLanguage('en')}
+                            className={`rounded-full px-3 py-2 text-xs font-semibold uppercase ${
+                                !isVietnamese ? 'bg-slate-900 text-white' : 'border border-[var(--border)] text-slate-500'
+                            }`}
+                        >
+                            EN
                         </button>
                     </div>
 
@@ -194,7 +278,7 @@ const Navbar = () => {
                                 onClick={() => setVisible(false)}
                                 to={item.path}
                                 className={({ isActive }) =>
-                                    `rounded-[20px] px-4 py-4 text-sm font-semibold tracking-[0.18em] ${
+                                    `rounded-[20px] px-4 py-4 text-sm font-semibold tracking-[0.14em] ${
                                         isActive
                                             ? 'bg-slate-900 text-white'
                                             : 'bg-white text-slate-600 hover:bg-slate-900 hover:text-white'
@@ -217,7 +301,7 @@ const Navbar = () => {
                                     className="w-full rounded-[20px] border border-[var(--border)] px-4 py-3 text-left text-sm font-semibold text-slate-600"
                                     type="button"
                                 >
-                                    MY ACCOUNT
+                                    {copy.myAccount.toUpperCase()}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -227,7 +311,7 @@ const Navbar = () => {
                                     className="w-full rounded-[20px] border border-[var(--border)] px-4 py-3 text-left text-sm font-semibold text-slate-600"
                                     type="button"
                                 >
-                                    ORDERS
+                                    {copy.orders.toUpperCase()}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -237,16 +321,16 @@ const Navbar = () => {
                                     className="w-full rounded-[20px] bg-slate-900 px-4 py-3 text-left text-sm font-semibold text-white"
                                     type="button"
                                 >
-                                    LOGOUT
+                                    {copy.logout.toUpperCase()}
                                 </button>
                             </>
                         ) : (
                             <Link
                                 onClick={() => setVisible(false)}
-                                className="block rounded-[20px] bg-slate-900 px-4 py-3 text-left text-sm font-semibold tracking-[0.18em] text-white"
+                                className="block rounded-[20px] bg-slate-900 px-4 py-3 text-left text-sm font-semibold tracking-[0.14em] text-white"
                                 to="/login"
                             >
-                                LOGIN
+                                {copy.login.toUpperCase()}
                             </Link>
                         )}
                     </div>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -23,7 +23,7 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: "Be Vietnam Pro", "Inter", sans-serif;
   color: var(--text);
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.96) 0, transparent 32%),
@@ -80,7 +80,7 @@ button:disabled {
 
 .prata-regular,
 .display-font {
-  font-family: "Outfit", sans-serif;
+  font-family: "Be Vietnam Pro", "Inter", sans-serif;
 }
 
 .page-shell {

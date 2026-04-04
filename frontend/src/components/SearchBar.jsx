@@ -1,12 +1,8 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { assets } from '../assets/assets';
 import { ShopContext } from '../context/ShopContext';
-
-const formatVndPrice = (price) => {
-    const n = Number(price);
-    if (!Number.isFinite(n)) return String(price ?? '');
-    return `${n.toLocaleString('vi-VN')} VNĐ`;
-};
+import { useLanguage } from '../context/LanguageContext';
+import { formatMoney } from '../lib/locale';
 
 const getSafeImage = (imageValue) => {
     if (Array.isArray(imageValue) && imageValue.length > 0) return imageValue[0];
@@ -24,6 +20,7 @@ const SearchBar = () => {
         logBehavior,
         navigate,
     } = useContext(ShopContext);
+    const { language } = useLanguage();
     const [isFocused, setIsFocused] = useState(false);
     const containerRef = useRef(null);
 
@@ -103,14 +100,18 @@ const SearchBar = () => {
                             onFocus={() => setIsFocused(true)}
                             className="flex-1 bg-transparent text-sm outline-none sm:text-base"
                             type="text"
-                            placeholder="Tìm kiếm sản phẩm, mô tả hoặc danh mục..."
+                            placeholder={
+                                language === 'vi'
+                                    ? 'Tìm kiếm sản phẩm, mô tả hoặc danh mục...'
+                                    : 'Search products, descriptions or categories...'
+                            }
                         />
                     </div>
 
                     {shouldShowDropdown && (
                         <div className="absolute left-0 right-0 top-[calc(100%+12px)] overflow-hidden rounded-[28px] border border-[var(--border)] bg-white shadow-[0_22px_60px_rgba(15,23,42,0.14)]">
                             <div className="border-b border-[var(--border)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                Gợi ý sản phẩm
+                                {language === 'vi' ? 'Gợi ý sản phẩm' : 'Product suggestions'}
                             </div>
 
                             {suggestions.length > 0 ? (
@@ -133,19 +134,24 @@ const SearchBar = () => {
                                                     {product.name}
                                                 </p>
                                                 <p className="mt-1 truncate text-xs uppercase tracking-[0.16em] text-slate-400">
-                                                    {product.category || 'Forever Collection'}
+                                                    {product.category ||
+                                                        (language === 'vi'
+                                                            ? 'Bộ sưu tập Forever'
+                                                            : 'Forever Collection')}
                                                 </p>
                                             </div>
 
                                             <p className="whitespace-nowrap text-sm font-semibold text-slate-900">
-                                                {formatVndPrice(product.price)}
+                                                {formatMoney(product.price, language)}
                                             </p>
                                         </button>
                                     ))}
                                 </div>
                             ) : (
                                 <div className="px-5 py-5 text-sm text-slate-500">
-                                    Không tìm thấy sản phẩm phù hợp.
+                                    {language === 'vi'
+                                        ? 'Không tìm thấy sản phẩm phù hợp.'
+                                        : 'No matching products found.'}
                                 </div>
                             )}
                         </div>
@@ -157,7 +163,7 @@ const SearchBar = () => {
                     className="inline-flex items-center justify-center rounded-full border border-[var(--border)] px-4 py-3 text-sm font-semibold tracking-[0.14em] text-slate-600 hover:bg-slate-900 hover:text-white"
                     type="button"
                 >
-                    Đóng
+                    {language === 'vi' ? 'Đóng' : 'Close'}
                 </button>
             </div>
         </div>

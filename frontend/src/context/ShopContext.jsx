@@ -3,6 +3,7 @@ import {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -104,6 +105,50 @@ function normalizeCartData(cartValue) {
 
 function hasCartEntries(cartValue) {
     return Object.keys(normalizeCartData(cartValue)).length > 0;
+}
+
+function mergeCartData(...sources) {
+    const merged = {};
+
+    sources.forEach((source) => {
+        const normalizedSource = normalizeCartData(source);
+
+        for (const itemId in normalizedSource) {
+            if (!merged[itemId]) merged[itemId] = {};
+
+            for (const size in normalizedSource[itemId]) {
+                if (!merged[itemId][size]) merged[itemId][size] = {};
+
+                for (const color in normalizedSource[itemId][size]) {
+                    const qty = Number(normalizedSource[itemId][size][color]) || 0;
+                    if (qty <= 0) continue;
+                    merged[itemId][size][color] = qty;
+                }
+            }
+        }
+    });
+
+    return normalizeCartData(merged);
+}
+
+function serializeCartData(cartValue) {
+    const normalized = normalizeCartData(cartValue);
+    const itemIds = Object.keys(normalized).sort();
+    const chunks = [];
+
+    itemIds.forEach((itemId) => {
+        const sizes = Object.keys(normalized[itemId] || {}).sort();
+
+        sizes.forEach((size) => {
+            const colors = Object.keys(normalized[itemId][size] || {}).sort();
+
+            colors.forEach((color) => {
+                chunks.push(`${itemId}::${size}::${color}::${Number(normalized[itemId][size][color]) || 0}`);
+            });
+        });
+    });
+
+    return chunks.join('|');
 }
 
 function parseVndPrice(price) {
@@ -279,9 +324,15 @@ const ShopContextProvider = ({ children }) => {
         }
     };
 
-    const getProductStock = useCallback(async (productId) => {
+    const getProductStock = useCallback(async (productId, size = '', color = '') => {
         try {
-            const response = await axios.get(`${backendUrl}/api/product/stock/${productId}`);
+            const params = new URLSearchParams();
+            if (size) params.set('size', size);
+            if (color) params.set('color', color);
+
+            const response = await axios.get(
+                `${backendUrl}/api/product/stock/${productId}${params.toString() ? `?${params.toString()}` : ''}`,
+            );
             if (response.data.success) {
                 return response.data.stock;
             }
@@ -314,8 +365,14 @@ const ShopContextProvider = ({ children }) => {
         return normalizeCartData(loadCartFromStorage(storageKey));
     });
     const [isCartHydrated, setIsCartHydrated] = useState(false);
+    const cartItemsRef = useRef(cartItems);
+    const cartSyncRequestRef = useRef(0);
 
     const navigate = useNavigate();
+
+    useEffect(() => {
+        cartItemsRef.current = normalizeCartData(cartItems);
+    }, [cartItems]);
 
     // CHANGE: token doi -> nap cart tu DB (neu login), fallback localStorage
     // Neu DB cart rong ma local cart co data thi day local cart len DB
@@ -330,8 +387,9 @@ const ShopContextProvider = ({ children }) => {
             const localCart = normalizeCartData(loadCartFromStorage(storageKey));
 
             if (!authToken) {
+                const mergedGuestCart = mergeCartData(localCart, cartItemsRef.current);
                 if (!cancelled) {
-                    setCartItems(localCart);
+                    setCartItems(mergedGuestCart);
                     setIsCartHydrated(true);
                 }
                 return;
@@ -346,14 +404,15 @@ const ShopContextProvider = ({ children }) => {
 
                 if (response?.data?.success) {
                     const remoteCart = normalizeCartData(response.data.cartData);
-                    const shouldUseLocalCart = !hasCartEntries(remoteCart) && hasCartEntries(localCart);
-                    const nextCart = shouldUseLocalCart ? localCart : remoteCart;
+                    const latestStoredCart = normalizeCartData(loadCartFromStorage(storageKey));
+                    const runtimeCart = normalizeCartData(cartItemsRef.current);
+                    const nextCart = mergeCartData(remoteCart, latestStoredCart, runtimeCart);
 
                     if (!cancelled) {
                         setCartItems(nextCart);
                     }
 
-                    if (shouldUseLocalCart) {
+                    if (serializeCartData(nextCart) !== serializeCartData(remoteCart)) {
                         try {
                             await axios.post(
                                 `${backendUrl}/api/cart/update`,
@@ -365,12 +424,12 @@ const ShopContextProvider = ({ children }) => {
                         }
                     }
                 } else if (!cancelled) {
-                    setCartItems(localCart);
+                    setCartItems(mergeCartData(localCart, cartItemsRef.current));
                 }
             } catch (error) {
                 console.error('getUserCart error:', error);
                 if (!cancelled) {
-                    setCartItems(localCart);
+                    setCartItems(mergeCartData(localCart, cartItemsRef.current));
                 }
             } finally {
                 if (!cancelled) {
@@ -398,12 +457,29 @@ const ShopContextProvider = ({ children }) => {
         async (nextCart, authToken) => {
             if (!authToken) return;
 
+            const requestCart = normalizeCartData(nextCart);
+            const requestSignature = serializeCartData(requestCart);
+            const syncRequestId = ++cartSyncRequestRef.current;
+
             try {
                 const response = await axios.post(
                     `${backendUrl}/api/cart/update`,
-                    { cartData: nextCart },
+                    { cartData: requestCart },
                     { headers: { token: authToken } },
                 );
+
+                if (response?.data?.cartData && syncRequestId === cartSyncRequestRef.current) {
+                    const serverCart = normalizeCartData(response.data.cartData);
+                    const serverSignature = serializeCartData(serverCart);
+                    const currentSignature = serializeCartData(cartItemsRef.current);
+                    const shouldApplyServerCart =
+                        serverSignature !== currentSignature &&
+                        (response?.data?.success !== true || serverSignature !== requestSignature);
+
+                    if (shouldApplyServerCart) {
+                        setCartItems(serverCart);
+                    }
+                }
 
                 if (response?.data?.success !== true) {
                     console.error(
@@ -448,9 +524,33 @@ const ShopContextProvider = ({ children }) => {
         }
     }, [backendUrl, token]);
 
+    const getCartVariantQty = useCallback(
+        (itemId, size, color = 'Any') => Number(cartItems?.[itemId]?.[size]?.[color] || 0),
+        [cartItems],
+    );
+
     // CHANGE: cart update theo functional setState de tranh stale state
-    const addToCart = useCallback((itemId, size, color = 'Any') => {
-        if (!itemId || !size) return;
+    const addToCart = useCallback(async (itemId, size, color = 'Any') => {
+        if (!itemId || !size) {
+            return { success: false, message: 'Missing product selection' };
+        }
+
+        const normalizedColor = color || 'Any';
+        const currentQty = getCartVariantQty(itemId, size, normalizedColor);
+        const availableStock = await getProductStock(itemId, size, normalizedColor);
+
+        if (availableStock <= 0) {
+            return { success: false, message: 'This variant is out of stock', stock: 0 };
+        }
+
+        if (currentQty + 1 > availableStock) {
+            return {
+                success: false,
+                message: `Only ${availableStock} item(s) left for this variant`,
+                stock: availableStock,
+                quantity: currentQty,
+            };
+        }
 
         setCartItems((prev) => {
             const cartData = structuredClone(prev || {});
@@ -462,13 +562,19 @@ const ShopContextProvider = ({ children }) => {
                 cartData[itemId][size] = {};
             }
 
-            cartData[itemId][size][color] = (Number(cartData[itemId][size][color]) || 0) + 1;
+            cartData[itemId][size][normalizedColor] =
+                (Number(cartData[itemId][size][normalizedColor]) || 0) + 1;
             return cartData;
         });
 
-        // Log action
-        logBehavior('ADD_TO_CART', itemId, { size, color });
-    }, [logBehavior]);
+        logBehavior('ADD_TO_CART', itemId, { size, color: normalizedColor });
+
+        return {
+            success: true,
+            stock: availableStock,
+            quantity: currentQty + 1,
+        };
+    }, [getCartVariantQty, getProductStock, logBehavior]);
 
     const removeFromCart = useCallback((itemId, size, color = 'Any') => {
         if (!itemId || !size) return;
@@ -494,17 +600,19 @@ const ShopContextProvider = ({ children }) => {
         logBehavior('REMOVE_FROM_CART', itemId, { size, color });
     }, [logBehavior]);
 
-    const updateCartQty = useCallback((itemId, size, color, qty) => {
-        if (!itemId || !size || !color) return;
+    const updateCartQty = useCallback(async (itemId, size, color, qty) => {
+        if (!itemId || !size || !color) {
+            return { success: false, message: 'Missing product selection' };
+        }
 
         const n = Number(qty);
 
-        setCartItems((prev) => {
-            const cartData = structuredClone(prev || {});
+        if (!n || n <= 0) {
+            setCartItems((prev) => {
+                const cartData = structuredClone(prev || {});
 
-            if (!cartData[itemId] || !cartData[itemId][size]) return cartData;
+                if (!cartData[itemId] || !cartData[itemId][size]) return cartData;
 
-            if (!n || n <= 0) {
                 delete cartData[itemId][size][color];
 
                 if (Object.keys(cartData[itemId][size]).length === 0) {
@@ -513,13 +621,62 @@ const ShopContextProvider = ({ children }) => {
                 if (Object.keys(cartData[itemId]).length === 0) {
                     delete cartData[itemId];
                 }
-            } else {
-                cartData[itemId][size][color] = n;
-            }
 
+                return cartData;
+            });
+
+            return { success: true, quantity: 0 };
+        }
+
+        const availableStock = await getProductStock(itemId, size, color);
+
+        if (availableStock <= 0) {
+            setCartItems((prev) => {
+                const cartData = structuredClone(prev || {});
+
+                if (!cartData[itemId] || !cartData[itemId][size]) return cartData;
+
+                delete cartData[itemId][size][color];
+
+                if (Object.keys(cartData[itemId][size]).length === 0) {
+                    delete cartData[itemId][size];
+                }
+                if (Object.keys(cartData[itemId]).length === 0) {
+                    delete cartData[itemId];
+                }
+
+                return cartData;
+            });
+
+            return {
+                success: false,
+                quantity: 0,
+                stock: 0,
+                message: 'This variant is out of stock',
+            };
+        }
+
+        const acceptedQty = Math.min(n, availableStock);
+
+        setCartItems((prev) => {
+            const cartData = structuredClone(prev || {});
+
+            if (!cartData[itemId] || !cartData[itemId][size]) return cartData;
+            cartData[itemId][size][color] = acceptedQty;
             return cartData;
         });
-    }, []);
+
+        if (acceptedQty !== n) {
+            return {
+                success: false,
+                quantity: acceptedQty,
+                stock: availableStock,
+                message: `Only ${availableStock} item(s) left for this variant`,
+            };
+        }
+
+        return { success: true, quantity: acceptedQty, stock: availableStock };
+    }, [getProductStock]);
 
     const getCartCount = useCallback(() => {
         let count = 0;

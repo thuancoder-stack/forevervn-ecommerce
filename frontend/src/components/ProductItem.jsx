@@ -1,12 +1,24 @@
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
+import { formatMoney } from '../lib/locale';
 
-function formatVndPrice(price) {
-    const n = Number(price);
-    if (!Number.isFinite(n)) return String(price ?? '');
-    return `${n.toLocaleString('vi-VN')} VNĐ`;
-}
+const copyByLanguage = {
+    vi: {
+        collection: 'B\u1ed8 S\u01afU T\u1eacP FOREVER',
+        view: 'XEM',
+        sale: 'GI\u1ea2M',
+    },
+    en: {
+        collection: 'FOREVER COLLECTION',
+        view: 'VIEW',
+        sale: 'SALE',
+    },
+};
 
 const ProductItem = ({ id, image, name, price, oldPrice }) => {
+    const { language } = useLanguage();
+    const t = copyByLanguage[language];
+
     const imageSrc = Array.isArray(image)
         ? image[0]
         : image || 'https://dummyimage.com/600x800/e5e7eb/6b7280&text=No+Image';
@@ -19,8 +31,8 @@ const ProductItem = ({ id, image, name, price, oldPrice }) => {
             <article className="section-shell h-full overflow-hidden rounded-[24px] border-white/70 bg-white/90">
                 <div className="relative overflow-hidden bg-slate-50">
                     {oldPrice > price && (
-                        <div className="absolute top-3 left-3 z-10 rounded-full bg-rose-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg">
-                            SALE
+                        <div className="absolute left-3 top-3 z-10 rounded-full bg-rose-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg">
+                            {t.sale}
                         </div>
                     )}
                     <img
@@ -31,8 +43,8 @@ const ProductItem = ({ id, image, name, price, oldPrice }) => {
                 </div>
 
                 <div className="space-y-3 p-4 sm:p-5">
-                    <p className="text-sm font-medium uppercase tracking-[0.22em] text-slate-400">
-                        Forever Collection
+                    <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-400">
+                        {t.collection}
                     </p>
 
                     <div className="flex items-start justify-between gap-4">
@@ -40,18 +52,18 @@ const ProductItem = ({ id, image, name, price, oldPrice }) => {
                             {name}
                         </p>
 
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition duration-300 group-hover:bg-slate-900 group-hover:text-white">
-                            View
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 transition duration-300 group-hover:bg-slate-900 group-hover:text-white">
+                            {t.view}
                         </span>
                     </div>
 
                     <div className="flex flex-wrap items-baseline gap-2">
                         <p className="text-sm font-bold text-slate-900 sm:text-base">
-                            {formatVndPrice(price)}
+                            {formatMoney(price, language)}
                         </p>
                         {oldPrice > price && (
                             <p className="text-xs text-slate-400 line-through">
-                                {formatVndPrice(oldPrice)}
+                                {formatMoney(oldPrice, language)}
                             </p>
                         )}
                     </div>
