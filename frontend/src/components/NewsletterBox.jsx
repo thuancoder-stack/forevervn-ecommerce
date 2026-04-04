@@ -6,13 +6,13 @@ import { Link } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import { useLanguage } from '../context/LanguageContext';
 
+const PROMO_DURATION_DAYS = 37;
+
 const getNextPromoDeadline = () => {
     const now = new Date();
     const deadline = new Date(now);
-    const day = deadline.getDay();
-    const daysUntilSunday = day === 0 ? 7 : 7 - day;
 
-    deadline.setDate(deadline.getDate() + daysUntilSunday);
+    deadline.setDate(deadline.getDate() + PROMO_DURATION_DAYS);
     deadline.setHours(23, 59, 59, 999);
     return deadline;
 };
@@ -129,6 +129,31 @@ const NewsletterBox = ({ featured = false }) => {
         [countdown, timerItems],
     );
 
+    const promoSummary = useMemo(() => {
+        const diff = promoDeadline.getTime() - Date.now();
+        if (diff <= 0) {
+            return language === 'vi' ? '\u01afu \u0111\u00e3i k\u1ebft th\u00fac trong h\u00f4m nay.' : 'The offer ends today.';
+        }
+
+        const totalDays = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const months = Math.floor(totalDays / 30);
+        const days = totalDays % 30;
+
+        if (language === 'vi') {
+            if (months > 0) {
+                return `C\u00f2n kho\u1ea3ng ${months} th\u00e1ng ${days} ng\u00e0y \u0111\u1ec3 nh\u1eadn \u01b0u \u0111\u00e3i n\u00e0y.`;
+            }
+
+            return `C\u00f2n kho\u1ea3ng ${totalDays} ng\u00e0y \u0111\u1ec3 nh\u1eadn \u01b0u \u0111\u00e3i n\u00e0y.`;
+        }
+
+        if (months > 0) {
+            return `About ${months} month${months > 1 ? 's' : ''} ${days} day${days !== 1 ? 's' : ''} left for this offer.`;
+        }
+
+        return `About ${totalDays} day${totalDays !== 1 ? 's' : ''} left for this offer.`;
+    }, [countdown.days, countdown.hours, countdown.minutes, countdown.seconds, language, promoDeadline]);
+
     const onSubmitHandler = async (event) => {
         event.preventDefault();
         if (loading) return;
@@ -210,6 +235,10 @@ const NewsletterBox = ({ featured = false }) => {
                     <p className='mt-4 max-w-xl text-sm leading-7 text-slate-500 sm:text-base'>
                         {copy.featuredDesc}
                     </p>
+
+                    <div className='mt-4 inline-flex rounded-full border border-[#f5d9b4] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#b45309]'>
+                        {promoSummary}
+                    </div>
 
                     <div className='mt-6 grid grid-cols-4 gap-3'>
                         {timerValues.map((item) => (

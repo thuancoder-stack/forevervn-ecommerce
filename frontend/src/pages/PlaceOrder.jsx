@@ -5,9 +5,11 @@ import { toast } from 'react-toastify';
 import { ShopContext } from '../context/ShopContext';
 import { useLanguage } from '../context/LanguageContext';
 import Title from '../components/Title';
+import PhoneField from '../components/PhoneField';
 import { getRegionByProvince, getShippingFeeByRegion } from '../data/regions';
 import { buildAddressSummary, emptyAddress, isAddressComplete, sanitizeAddressPayload } from '../lib/address';
 import { formatMoney } from '../lib/locale';
+import { formatPhoneValue, splitPhoneValue } from '../lib/phone';
 
 const copy = {
     vi: {
@@ -137,6 +139,31 @@ const PlaceOrder = () => {
     const [selectedProv, setSelectedProv] = useState('');
     const [selectedDist, setSelectedDist] = useState('');
     const [selectedWard, setSelectedWard] = useState('');
+    const [phoneCode, setPhoneCode] = useState('+84');
+    const [phoneNumber, setPhoneNumber] = useState('');
+
+    const syncPhoneState = (rawPhone = '') => {
+        const parsed = splitPhoneValue(rawPhone);
+        setPhoneCode(parsed.countryCode);
+        setPhoneNumber(parsed.phoneNumber);
+        return formatPhoneValue(parsed.countryCode, parsed.phoneNumber);
+    };
+
+    const handlePhoneCodeChange = (nextCode) => {
+        setPhoneCode(nextCode);
+        setFormData((prev) => ({
+            ...prev,
+            phone: formatPhoneValue(nextCode, phoneNumber),
+        }));
+    };
+
+    const handlePhoneNumberChange = (nextNumber) => {
+        setPhoneNumber(nextNumber);
+        setFormData((prev) => ({
+            ...prev,
+            phone: formatPhoneValue(phoneCode, nextNumber),
+        }));
+    };
 
     useEffect(() => {
         axios
@@ -198,13 +225,14 @@ const PlaceOrder = () => {
                 const user = data.user || {};
                 const nextAddresses = Array.isArray(user.addresses) ? user.addresses : [];
                 const defaultAddress = nextAddresses.find((item) => item.isDefault) || nextAddresses[0] || null;
+                const normalizedPhone = syncPhoneState(defaultAddress?.phone || '');
 
                 setSavedAddresses(nextAddresses);
                 setFormData((prev) => ({
                     ...prev,
                     fullName: defaultAddress?.fullName || user.name || prev.fullName,
                     email: defaultAddress?.email || user.email || prev.email,
-                    phone: defaultAddress?.phone || prev.phone,
+                    phone: normalizedPhone,
                     province: defaultAddress?.province || prev.province,
                     district: defaultAddress?.district || prev.district,
                     ward: defaultAddress?.ward || prev.ward,
@@ -373,18 +401,31 @@ const PlaceOrder = () => {
         setSelectedWard('');
         setDistricts([]);
         setWards([]);
+        const nextPhone = formatPhoneValue(phoneCode, phoneNumber);
         setFormData((prev) => ({
             ...emptyAddress,
             fullName: prev.fullName || '',
             email: prev.email || '',
+            phone: nextPhone,
         }));
     };
 
     const useSelectedAddress = (address) => {
         setSelectedAddressId(String(address?._id || ''));
         setUseNewAddress(false);
+        const normalizedPhone = syncPhoneState(address?.phone || '');
         const region = getRegionByProvince(address?.province);
         setDeliveryFee(getShippingFeeByRegion(region));
+        setFormData((prev) => ({
+            ...prev,
+            fullName: address?.fullName || prev.fullName,
+            email: address?.email || prev.email,
+            phone: normalizedPhone,
+            province: address?.province || prev.province,
+            district: address?.district || prev.district,
+            ward: address?.ward || prev.ward,
+            addressDetail: address?.addressDetail || prev.addressDetail,
+        }));
     };
 
     const onSubmitHandler = async (event) => {
@@ -536,7 +577,16 @@ const PlaceOrder = () => {
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <input name="label" value={formData.label} onChange={handleChange} className="sm:col-span-2 rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none" type="text" placeholder={t.addressLabelPlaceholder} />
                                     <input name="fullName" value={formData.fullName} onChange={handleChange} className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none" type="text" placeholder={t.fullName} required={useNewAddress || savedAddresses.length === 0} />
-                                    <input name="phone" value={formData.phone} onChange={handleChange} className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none" type="text" placeholder={t.phone} required={useNewAddress || savedAddresses.length === 0} />
+                                    <PhoneField
+                                        countryCode={phoneCode}
+                                        phoneNumber={phoneNumber}
+                                        onCountryCodeChange={handlePhoneCodeChange}
+                                        onPhoneNumberChange={handlePhoneNumberChange}
+                                        placeholder={t.phone}
+                                        required={useNewAddress || savedAddresses.length === 0}
+                                        selectClassName="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none bg-white"
+                                        inputClassName="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
+                                    />
                                     <input name="email" value={formData.email} onChange={handleChange} className="sm:col-span-2 rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none" type="email" placeholder={t.email} required={useNewAddress || savedAddresses.length === 0} />
 
                                     <select value={selectedProv} onChange={onProvinceChange} className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none bg-white" required={useNewAddress || savedAddresses.length === 0}>

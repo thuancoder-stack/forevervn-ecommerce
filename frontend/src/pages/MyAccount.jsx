@@ -3,7 +3,9 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { ShopContext } from '../context/ShopContext';
 import { useLanguage } from '../context/LanguageContext';
+import PhoneField from '../components/PhoneField';
 import { buildAddressSummary, emptyAddress, sanitizeAddressPayload } from '../lib/address';
+import { formatPhoneValue, splitPhoneValue } from '../lib/phone';
 
 const normalizeName = (value) =>
     String(value || '')
@@ -131,8 +133,33 @@ const MyAccount = () => {
     const [selectedProv, setSelectedProv] = useState('');
     const [selectedDist, setSelectedDist] = useState('');
     const [selectedWard, setSelectedWard] = useState('');
+    const [phoneCode, setPhoneCode] = useState('+84');
+    const [phoneNumber, setPhoneNumber] = useState('');
 
     const addresses = useMemo(() => userData?.addresses || [], [userData?.addresses]);
+
+    const syncPhoneState = (rawPhone = '') => {
+        const parsed = splitPhoneValue(rawPhone);
+        setPhoneCode(parsed.countryCode);
+        setPhoneNumber(parsed.phoneNumber);
+        return formatPhoneValue(parsed.countryCode, parsed.phoneNumber);
+    };
+
+    const handlePhoneCodeChange = (nextCode) => {
+        setPhoneCode(nextCode);
+        setAddressForm((prev) => ({
+            ...prev,
+            phone: formatPhoneValue(nextCode, phoneNumber),
+        }));
+    };
+
+    const handlePhoneNumberChange = (nextNumber) => {
+        setPhoneNumber(nextNumber);
+        setAddressForm((prev) => ({
+            ...prev,
+            phone: formatPhoneValue(phoneCode, nextNumber),
+        }));
+    };
 
     const loadDistricts = async (provinceCode) => {
         if (!provinceCode) {
@@ -172,6 +199,8 @@ const MyAccount = () => {
 
     const resetAddressForm = () => {
         setAddressForm(emptyAddress);
+        setPhoneCode('+84');
+        setPhoneNumber('');
         setEditingAddressId('');
         setSelectedProv('');
         setSelectedDist('');
@@ -351,12 +380,13 @@ const MyAccount = () => {
     };
 
     const startEditAddress = async (address) => {
+        const normalizedPhone = syncPhoneState(address?.phone || '');
         setEditingAddressId(String(address?._id || ''));
         setAddressForm({
             label: address?.label || '',
             fullName: address?.fullName || '',
             email: address?.email || '',
-            phone: address?.phone || '',
+            phone: normalizedPhone,
             province: address?.province || '',
             district: address?.district || '',
             ward: address?.ward || '',
@@ -630,14 +660,15 @@ const MyAccount = () => {
                                 placeholder={t.fullName}
                                 required
                             />
-                            <input
-                                name="phone"
-                                value={addressForm.phone}
-                                onChange={handleAddressFieldChange}
-                                className="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
-                                type="text"
+                            <PhoneField
+                                countryCode={phoneCode}
+                                phoneNumber={phoneNumber}
+                                onCountryCodeChange={handlePhoneCodeChange}
+                                onPhoneNumberChange={handlePhoneNumberChange}
                                 placeholder={t.phone}
                                 required
+                                selectClassName="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none bg-white"
+                                inputClassName="rounded-[20px] border border-[var(--border)] px-4 py-4 text-sm outline-none"
                             />
                         </div>
 

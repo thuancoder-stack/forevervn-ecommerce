@@ -1,3 +1,5 @@
+import { normalizePhoneValue } from './phone';
+
 export const emptyAddress = {
     label: '',
     fullName: '',
@@ -14,7 +16,7 @@ export const sanitizeAddressPayload = (address = {}) => ({
     label: String(address.label || '').trim(),
     fullName: String(address.fullName || '').trim(),
     email: String(address.email || '').trim(),
-    phone: String(address.phone || '').trim(),
+    phone: normalizePhoneValue(address.phone),
     province: String(address.province || '').trim(),
     district: String(address.district || '').trim(),
     ward: String(address.ward || '').trim(),
