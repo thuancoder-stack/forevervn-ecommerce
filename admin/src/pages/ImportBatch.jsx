@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import { backendUrl as defaultBackendUrl } from '../config'
 import {
   AppstoreOutlined,
+  DeleteOutlined,
   EditOutlined,
   InboxOutlined,
   PlusOutlined,
@@ -19,6 +20,8 @@ import {
   Input,
   InputNumber,
   Modal,
+  Popconfirm,
+  Select,
   Space,
   Statistic,
   Table,
@@ -35,6 +38,13 @@ import {
 } from '../lib/adminAntd'
 
 const { Title, Text } = Typography
+
+const formatVnd = (value) => `${new Intl.NumberFormat('vi-VN').format(Number(value || 0))} d`
+
+const normalizeImage = (imageValue) => {
+  if (Array.isArray(imageValue)) return imageValue[0] || ''
+  return imageValue || ''
+}
 
 const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
   const [batches, setBatches] = useState([])
@@ -59,6 +69,7 @@ const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
     status: '',
   })
   const [updating, setUpdating] = useState(false)
+  const [deletingBatchId, setDeletingBatchId] = useState(null)
 
   const [createForm] = Form.useForm()
   const [editForm] = Form.useForm()
@@ -162,6 +173,32 @@ const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
     }
   }
 
+  const handleDeleteBatch = useCallback(async (batchId) => {
+    try {
+      setDeletingBatchId(batchId)
+      const { data } = await axios.post(
+        `${apiBaseUrl}/api/import-batch/delete`,
+        { id: batchId },
+        { headers: { token } },
+      )
+
+      if (data.success) {
+        toast.success('Batch deleted successfully')
+        if (editingBatchId === batchId) {
+          setEditingBatchId(null)
+          editForm.resetFields()
+        }
+        fetchData()
+      } else {
+        toast.error(data.message)
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete import batch')
+    } finally {
+      setDeletingBatchId(null)
+    }
+  }, [apiBaseUrl, editForm, editingBatchId, fetchData, token])
+
   const getProductName = useCallback(
     (id) => {
       const product = products.find((item) => item._id === id)
@@ -171,9 +208,31 @@ const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
   )
 
   const productOptions = useMemo(
-    () => products.map((product) => ({ value: product._id, label: product.name })),
+    () =>
+      products.map((product) => ({
+        value: product._id,
+        label: product.name,
+        searchText: [product.name, product.category, product.subCategory].filter(Boolean).join(' ').toLowerCase(),
+        meta: {
+          name: product.name,
+          category: product.category || '-',
+          subCategory: product.subCategory || '',
+          price: product.price || 0,
+          image: normalizeImage(product.image),
+        },
+      })),
     [products],
   )
+
+  const selectedProduct = useMemo(
+    () => products.find((product) => product._id === formData.productId) || null,
+    [formData.productId, products],
+  )
+
+  const selectedProductSizes = useMemo(() => {
+    if (!Array.isArray(selectedProduct?.sizes)) return []
+    return selectedProduct.sizes.filter(Boolean).map((size) => String(size).toUpperCase())
+  }, [selectedProduct])
 
   const stats = useMemo(() => {
     const active = batches.filter((item) => item.status === 'Active').length
@@ -258,7 +317,7 @@ const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
         dataIndex: 'costPrice',
         key: 'costPrice',
         width: 150,
-        render: (value) => <Text strong style={{ color: '#dc2626' }}>{new Intl.NumberFormat('vi-VN').format(value)} d</Text>,
+        render: (value) => <Text strong style={{ color: '#dc2626' }}>{formatVnd(value)}</Text>,
       },
       {
         title: 'Remaining / Initial',
@@ -279,7 +338,16 @@ const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
         key: 'status',
         width: 130,
         render: (value) => (
-          <Tag color={value === 'Active' ? 'success' : 'default'} style={{ borderRadius: 999, fontWeight: 600 }}>
+          <Tag
+            color={value === 'Active' ? 'default' : 'default'}
+            style={{
+              borderRadius: 999,
+              fontWeight: 600,
+              background: value === 'Active' ? '#fff1df' : '#f8fafc',
+              borderColor: value === 'Active' ? '#f2c99b' : '#e2e8f0',
+              color: value === 'Active' ? '#b45309' : '#64748b',
+            }}
+          >
             {value}
           </Tag>
         ),
@@ -290,29 +358,45 @@ const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
         width: 100,
         align: 'center',
         render: (_, batch) => (
-          <Button
-            type='text'
-            shape='circle'
-            icon={<EditOutlined />}
-            style={{ color: '#f59e0b' }}
-            onClick={() => {
-              setEditingBatchId(batch._id)
-              const nextValues = {
-                size: batch.size,
-                costPrice: batch.costPrice,
-                remainingQty: batch.remainingQty,
-                supplier: batch.supplier || '',
-                note: batch.note || '',
-                status: batch.status,
-              }
-              setEditFormData(nextValues)
-              editForm.setFieldsValue(nextValues)
-            }}
-          />
+          <Space size={4}>
+            <Button
+              type='text'
+              shape='circle'
+              icon={<EditOutlined />}
+              style={{ color: '#f59e0b' }}
+              onClick={() => {
+                setEditingBatchId(batch._id)
+                const nextValues = {
+                  size: batch.size,
+                  costPrice: batch.costPrice,
+                  remainingQty: batch.remainingQty,
+                  supplier: batch.supplier || '',
+                  note: batch.note || '',
+                  status: batch.status,
+                }
+                setEditFormData(nextValues)
+                editForm.setFieldsValue(nextValues)
+              }}
+            />
+            <Popconfirm
+              title='Delete this import batch?'
+              okText='Delete'
+              cancelText='Cancel'
+              onConfirm={() => handleDeleteBatch(batch._id)}
+            >
+              <Button
+                type='text'
+                shape='circle'
+                danger
+                loading={deletingBatchId === batch._id}
+                icon={<DeleteOutlined />}
+              />
+            </Popconfirm>
+          </Space>
         ),
       },
     ],
-    [editForm, getProductName],
+    [deletingBatchId, editForm, getProductName, handleDeleteBatch],
   )
 
   return (
@@ -355,25 +439,59 @@ const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
                 name='productId'
                 rules={[{ required: true, message: 'Please choose a product' }]}
               >
-                <select
-                  value={formData.productId}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, productId: event.target.value }))}
-                  className={nativeSelectClass}
-                >
-                  <option value=''>Select product</option>
-                  {productOptions.map((product) => (
-                    <option key={product.value} value={product.value}>
-                      {product.label}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  size='large'
+                  showSearch
+                  value={formData.productId || undefined}
+                  placeholder='Search and select product'
+                  optionFilterProp='searchText'
+                  listHeight={320}
+                  options={productOptions}
+                  filterOption={(input, option) =>
+                    String(option?.searchText || '').includes(String(input || '').toLowerCase())
+                  }
+                  onChange={(value) => {
+                    setFormData((prev) => ({ ...prev, productId: value || '' }))
+                    createForm.setFieldValue('productId', value)
+                  }}
+                  optionRender={(option) => {
+                    const meta = option.data.meta
+                    return (
+                      <div className='flex items-center gap-3 py-1'>
+                        <div className='flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50'>
+                          {meta?.image ? (
+                            <img
+                              src={meta.image}
+                              alt={meta.name}
+                              width={40}
+                              height={40}
+                              className='h-full w-full object-contain p-1'
+                            />
+                          ) : (
+                            <InboxOutlined style={{ color: '#cbd5e1', fontSize: 14 }} />
+                          )}
+                        </div>
+                        <div className='min-w-0 flex-1'>
+                          <div className='truncate font-medium text-slate-900'>{meta?.name}</div>
+                          <div className='truncate text-xs text-slate-400'>
+                            {meta?.category}
+                            {meta?.subCategory ? ` • ${meta.subCategory}` : ''}
+                          </div>
+                        </div>
+                        <div className='text-xs font-semibold text-slate-500'>
+                          {formatVnd(meta?.price)}
+                        </div>
+                      </div>
+                    )
+                  }}
+                />
               </Form.Item>
 
               <div className='grid gap-4 md:grid-cols-2'>
                 <Form.Item label='Size' name='size'>
                   <Input
                     size='large'
-                    placeholder='S, M, L or Any'
+                    placeholder='S, M, L, S,M or Any'
                     value={formData.size}
                     onChange={(event) =>
                       setFormData((prev) => ({ ...prev, size: event.target.value.toUpperCase() }))
@@ -389,6 +507,62 @@ const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
                   />
                 </Form.Item>
               </div>
+
+              {selectedProduct ? (
+                <div className='mb-4 rounded-2xl border border-[#f2c99b] bg-[#fff1df] px-4 py-4'>
+                  <div className='flex flex-wrap items-start justify-between gap-3'>
+                    <div>
+                      <div className='text-sm font-semibold text-slate-900'>{selectedProduct.name}</div>
+                      <div className='mt-1 text-xs text-amber-800'>
+                        Selling price đang để bán: <span className='font-semibold'>{formatVnd(selectedProduct.price)}</span>
+                      </div>
+                    </div>
+                    <Tag
+                      style={{
+                        borderRadius: 999,
+                        background: '#fff7ed',
+                        borderColor: '#fdba74',
+                        color: '#9a3412',
+                        fontWeight: 700,
+                      }}
+                    >
+                      Active setup
+                    </Tag>
+                  </div>
+                  {selectedProductSizes.length > 0 ? (
+                    <div className='mt-3'>
+                      <div className='mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500'>
+                        Sizes đang bán
+                      </div>
+                      <div className='flex flex-wrap gap-2'>
+                        {selectedProductSizes.map((sizeOption) => (
+                          <Button
+                            key={sizeOption}
+                            size='small'
+                            onClick={() => setFormData((prev) => ({ ...prev, size: sizeOption }))}
+                          >
+                            {sizeOption}
+                          </Button>
+                        ))}
+                        {selectedProductSizes.length > 1 ? (
+                          <Button
+                            size='small'
+                            type='default'
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                size: selectedProductSizes.join(','),
+                              }))
+                            }
+                          >
+                            {selectedProductSizes.join(',')}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div className='grid gap-4 md:grid-cols-2'>
                 <Form.Item
@@ -420,6 +594,13 @@ const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
                   />
                 </Form.Item>
               </div>
+
+              {selectedProduct ? (
+                <div className='-mt-2 mb-2 text-xs text-slate-500'>
+                  Cost price nên thấp hơn giá đang bán hiện tại là{' '}
+                  <span className='font-semibold text-slate-700'>{formatVnd(selectedProduct.price)}</span>
+                </div>
+              ) : null}
 
               <Form.Item label='Note' name='note'>
                 <Input
@@ -456,6 +637,7 @@ const ImportBatch = ({ token, backendUrl: backendUrlFromProps }) => {
               columns={columns}
               dataSource={batches}
               loading={loading}
+              rowClassName={(record) => (record.status === 'Active' ? '!bg-[#fff7ed]' : '')}
               size='middle'
               pagination={{ pageSize: 7, showSizeChanger: false, size: 'small' }}
               scroll={{ x: 980 }}

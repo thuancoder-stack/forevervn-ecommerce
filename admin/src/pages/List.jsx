@@ -16,6 +16,7 @@ import {
   Button,
   Card,
   ConfigProvider,
+  AutoComplete,
   Empty,
   Input,
   Popconfirm,
@@ -43,6 +44,7 @@ const List = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
   const [loading, setLoading] = useState(true)
   const [removingId, setRemovingId] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState('All')
 
   const currencyFormatter = useMemo(
@@ -114,6 +116,46 @@ const List = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
       return matchesSearch && matchesCategory
     })
   }, [categoryFilter, normalizedProducts, searchTerm])
+
+  const searchSuggestions = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase()
+    if (!keyword) return []
+
+    return normalizedProducts
+      .filter((item) => {
+        const haystack = `${item.name} ${item.category}`.toLowerCase()
+        return haystack.includes(keyword)
+      })
+      .slice(0, 7)
+      .map((item) => ({
+        value: item.name,
+        productId: item.id,
+        label: (
+          <div className='flex items-center gap-3 py-1'>
+            <div className='flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50'>
+              {item.image ? (
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  width={36}
+                  height={36}
+                  className='h-full w-full object-contain p-1'
+                />
+              ) : (
+                <PictureOutlined style={{ color: '#cbd5e1', fontSize: 14 }} />
+              )}
+            </div>
+            <div className='min-w-0 flex-1'>
+              <div className='truncate font-medium text-slate-900'>{item.name}</div>
+              <div className='text-xs text-slate-400'>{item.category}</div>
+            </div>
+            <div className='text-xs font-semibold text-slate-500'>
+              {currencyFormatter.format(item.price)}
+            </div>
+          </div>
+        ),
+      }))
+  }, [currencyFormatter, normalizedProducts, searchTerm])
 
   const fetchProducts = useCallback(async () => {
     if (!apiBaseUrl || !token) {
@@ -259,16 +301,36 @@ const List = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
         key: 'product',
         width: 340,
         render: (_, product) => (
-          <div className='flex items-center gap-3'>
-            <div className='flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50'>
+          <div className='flex items-start gap-3'>
+            <div
+              className='flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-100 bg-slate-50'
+              style={{ width: 56, height: 56, minWidth: 56 }}
+            >
               {product.image ? (
-                <img src={product.image} alt={product.name} width={36} height={36} className='h-full w-full object-contain p-1' />
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  width={56}
+                  height={56}
+                  style={{ width: 56, height: 56, objectFit: 'cover' }}
+                  className='h-14 w-14'
+                />
               ) : (
                 <PictureOutlined style={{ color: '#cbd5e1', fontSize: 14 }} />
               )}
             </div>
-            <div className='min-w-0'>
-              <Text strong style={{ color: '#0f172a' }}>
+            <div className='min-w-0 pt-0.5'>
+              <Text
+                strong
+                style={{
+                  color: '#0f172a',
+                  lineHeight: 1.35,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
                 {product.name}
               </Text>
               <div>
@@ -366,14 +428,34 @@ const List = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
           </div>
 
           <Space size={12} wrap>
-            <Input
-              size='large'
-              placeholder='Search product or category'
-              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-              style={{ width: 260 }}
+            <AutoComplete
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-            />
+              options={searchSuggestions}
+              open={searchDropdownOpen && searchSuggestions.length > 0}
+              onSelect={(value) => {
+                setSearchTerm(value)
+                setCategoryFilter('All')
+                setSearchDropdownOpen(false)
+              }}
+              onBlur={() => {
+                window.setTimeout(() => setSearchDropdownOpen(false), 120)
+              }}
+              style={{ width: 320 }}
+            >
+              <Input
+                size='large'
+                allowClear
+                placeholder='Search product or category'
+                prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                value={searchTerm}
+                onFocus={() => setSearchDropdownOpen(searchSuggestions.length > 0)}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setSearchTerm(nextValue)
+                  setSearchDropdownOpen(Boolean(nextValue.trim()))
+                }}
+              />
+            </AutoComplete>
             <select
               value={categoryFilter}
               onChange={(event) => setCategoryFilter(event.target.value)}

@@ -3,7 +3,6 @@ import axios from 'axios'
 import { toast } from 'react-toastify'
 import {
   BgColorsOutlined,
-  DollarCircleOutlined,
   FireOutlined,
   InboxOutlined,
   PictureOutlined,
@@ -378,23 +377,10 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
             ))}
           </div>
 
-          <div className='grid gap-4 xl:grid-cols-2 2xl:grid-cols-3'>
+          <div className='flex flex-col gap-4 xl:flex-row xl:items-start'>
             <Card
               bordered={false}
-              className='shadow-sm'
-              title={
-                <Space size={10}>
-                  <div className='flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-50 text-pink-500'>
-                    <DollarCircleOutlined />
-                  </div>
-                  <div>
-                    <div className='font-semibold text-slate-900'>Product Details</div>
-                    <div className='text-xs font-normal text-slate-400'>
-                      Set the catalog copy, pricing and category mapping.
-                    </div>
-                  </div>
-                </Space>
-              }
+              className='shadow-sm xl:min-w-0 xl:flex-1'
             >
               <div className='space-y-4'>
                 <div>
@@ -425,7 +411,7 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
                   />
                 </div>
 
-                <div className='grid gap-3 md:grid-cols-2'>
+                <div className='grid gap-3 lg:grid-cols-2'>
                   <div>
                     <Text strong style={{ color: '#0f172a' }}>
                       Category
@@ -496,232 +482,235 @@ const Add = ({ token, setToken, backendUrl: backendUrlFromProps }) => {
                 </div>
               </div>
             </Card>
-
-            <Card
-              bordered={false}
-              className='shadow-sm'
-              title={
-                <Space size={10}>
-                  <div className='flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-500'>
-                    <PictureOutlined />
-                  </div>
-                  <div>
-                    <div className='font-semibold text-slate-900'>Media Gallery</div>
-                    <div className='text-xs font-normal text-slate-400'>
-                      Upload up to 4 product images in compact slots.
+            <div className='flex w-full flex-col gap-4 xl:w-[400px] 2xl:w-[440px]'>
+              <Card
+                bordered={false}
+                className='shadow-sm'
+                title={
+                  <Space size={10}>
+                    <div className='flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-500'>
+                      <PictureOutlined />
                     </div>
-                  </div>
-                </Space>
-              }
-            >
-              <div className='grid grid-cols-2 gap-2 lg:grid-cols-4'>
-                {images.map((file, index) => (
-                  <div key={`image-${index}`} className='rounded-2xl border border-slate-100 bg-slate-50 p-2'>
-                    <label htmlFor={`image${index + 1}`} className='block cursor-pointer'>
-                        <div className='relative h-20 overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-white'>
-                        {renderUploadSlot(index, file)}
-                        <div className='absolute inset-x-1.5 bottom-1.5 rounded-lg bg-white/95 px-2 py-1 text-center text-[10px] font-semibold text-slate-500 shadow-sm'>
-                          {file ? `Image ${index + 1}` : `Slot ${index + 1}`}
-                        </div>
+                    <div>
+                      <div className='font-semibold text-slate-900'>Media Gallery</div>
+                      <div className='text-xs font-normal text-slate-400'>
+                        Upload up to 4 product images in compact slots.
                       </div>
-                    </label>
-
-                    <input
-                      id={`image${index + 1}`}
-                      type='file'
-                      hidden
-                      accept='image/*'
-                      onChange={(event) => handleImageChange(index, event)}
-                    />
-
-                    <div className='mt-1 flex items-center justify-between gap-2'>
-                      <Text type='secondary' style={{ fontSize: 11 }}>
-                        {MAX_IMAGE_SIZE_MB}MB max
-                      </Text>
-                      {file ? (
-                        <Button type='text' danger size='small' onClick={() => setImageAt(index, null)}>
-                          Remove
-                        </Button>
-                      ) : null}
                     </div>
-                  </div>
-                ))}
-              </div>
+                  </Space>
+                }
+              >
+                <div className='grid grid-cols-2 gap-2'>
+                  {images.map((file, index) => (
+                    <div key={`image-${index}`} className='rounded-2xl border border-slate-100 bg-slate-50 p-2'>
+                      <label htmlFor={`image${index + 1}`} className='block cursor-pointer'>
+                        <div className='relative h-20 overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-white'>
+                          {renderUploadSlot(index, file)}
+                          <div className='absolute inset-x-1.5 bottom-1.5 rounded-lg bg-white/95 px-2 py-1 text-center text-[10px] font-semibold text-slate-500 shadow-sm'>
+                            {file ? `Image ${index + 1}` : `Slot ${index + 1}`}
+                          </div>
+                        </div>
+                      </label>
 
-              <div className='mt-3'>
-                <Text strong style={{ color: '#0f172a' }}>
-                  TikTok Video URL
-                </Text>
-                <Input
-                  size='large'
-                  className='mt-2'
-                  prefix={<PlayCircleOutlined style={{ color: '#94a3b8' }} />}
-                  value={videoUrl}
-                  onChange={(event) => setVideoUrl(event.target.value)}
-                  placeholder='https://www.tiktok.com/@user/video/...'
-                />
+                      <input
+                        id={`image${index + 1}`}
+                        type='file'
+                        hidden
+                        accept='image/*'
+                        onChange={(event) => handleImageChange(index, event)}
+                      />
+
+                      <div className='mt-1 flex items-center justify-between gap-2'>
+                        <Text type='secondary' style={{ fontSize: 11 }}>
+                          {MAX_IMAGE_SIZE_MB}MB max
+                        </Text>
+                        {file ? (
+                          <Button type='text' danger size='small' onClick={() => setImageAt(index, null)}>
+                            Remove
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className='mt-3'>
+                  <Text strong style={{ color: '#0f172a' }}>
+                    TikTok Video URL
+                  </Text>
+                  <Input
+                    size='large'
+                    className='mt-2'
+                    prefix={<PlayCircleOutlined style={{ color: '#94a3b8' }} />}
+                    value={videoUrl}
+                    onChange={(event) => setVideoUrl(event.target.value)}
+                    placeholder='https://www.tiktok.com/@user/video/...'
+                  />
                   <Text type='secondary' style={{ display: 'block', marginTop: 6, fontSize: 11 }}>
                     He thong se tu dong lay link HD khong logo.
                   </Text>
-              </div>
-            </Card>
-
-            <Card
-              bordered={false}
-              className='shadow-sm'
-              title={
-                <Space size={10}>
-                  <div className='flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-50 text-amber-500'>
-                    <TagsOutlined />
-                  </div>
-                  <div>
-                    <div className='font-semibold text-slate-900'>Variants & Merchandising</div>
-                    <div className='text-xs font-normal text-slate-400'>
-                      Keep size, color and bestseller controls visible in one glance.
-                    </div>
-                  </div>
-                </Space>
-              }
-            >
-              <div className='space-y-4'>
-                  <div>
-                    <div className='mb-2 flex items-center gap-2'>
-                      <BgColorsOutlined style={{ color: '#f97316' }} />
-                      <Text strong style={{ color: '#0f172a' }}>
-                        Product Colors
-                      </Text>
-                    </div>
-                    <div className='flex gap-2'>
-                      <Input
-                        size='large'
-                        value={customColor}
-                        onChange={(event) => setCustomColor(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault()
-                            addCustomColor()
-                          }
-                        }}
-                        placeholder='Add color: Black, Red, #FF0000...'
-                      />
-                      <Button size='large' onClick={addCustomColor} icon={<PlusOutlined />}>
-                        Add
-                      </Button>
-                    </div>
-                    <div className='mt-3 flex flex-wrap gap-2'>
-                      {colors.length ? (
-                        colors.map((color) => (
-                          <Tag
-                            key={color}
-                            closable
-                            onClose={(event) => {
-                              event.preventDefault()
-                              toggleColor(color)
-                            }}
-                            style={{
-                              borderRadius: 999,
-                              padding: '6px 12px',
-                              borderColor: '#fed7aa',
-                              backgroundColor: '#fff7ed',
-                              color: '#ea580c',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {color}
-                          </Tag>
-                        ))
-                      ) : (
-                        <Text type='secondary'>No colors selected</Text>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className='mb-2 flex items-center gap-2'>
-                      <TagsOutlined style={{ color: '#2563eb' }} />
-                      <Text strong style={{ color: '#0f172a' }}>
-                        Product Sizes
-                      </Text>
-                    </div>
-                    <div className='flex flex-wrap gap-2'>
-                      {DEFAULT_SIZES.map((size) => (
-                        <Button
-                          key={size}
-                          size='middle'
-                          type={sizes.includes(size) ? 'primary' : 'default'}
-                          className='!rounded-full !px-4'
-                          onClick={() => toggleSize(size)}
-                        >
-                          {size}
-                        </Button>
-                      ))}
-                    </div>
-
-                    <div className='mt-3 flex gap-2'>
-                      <Input
-                        size='large'
-                        value={customSize}
-                        onChange={(event) => setCustomSize(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault()
-                            addCustomSize()
-                          }
-                        }}
-                        placeholder='Add custom size: 3XL, 41...'
-                      />
-                      <Button size='large' onClick={addCustomSize} icon={<PlusOutlined />}>
-                        Add
-                      </Button>
-                    </div>
-
-                    <div className='mt-3 flex flex-wrap gap-2'>
-                      {sizes.length ? (
-                        sizes.map((size) => (
-                          <Tag
-                            key={size}
-                            closable
-                            onClose={(event) => {
-                              event.preventDefault()
-                              toggleSize(size)
-                            }}
-                            style={{
-                              borderRadius: 999,
-                              padding: '6px 12px',
-                              borderColor: '#bfdbfe',
-                              backgroundColor: '#eff6ff',
-                              color: '#2563eb',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {size}
-                          </Tag>
-                        ))
-                      ) : (
-                        <Text type='secondary'>No size selected</Text>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className='rounded-2xl border border-slate-100 bg-slate-50 p-4'>
-                    <div className='flex items-start justify-between gap-4'>
-                      <div>
-                        <div className='flex items-center gap-2'>
-                          <FireOutlined style={{ color: '#ec4899' }} />
-                          <Text strong style={{ color: '#0f172a' }}>
-                            Bestseller Placement
-                          </Text>
-                        </div>
-                        <Text type='secondary' style={{ display: 'block', marginTop: 6 }}>
-                          Mark this item to surface it in highlighted bestseller collections.
-                        </Text>
-                      </div>
-                      <Switch checked={bestseller} onChange={setBestseller} />
-                    </div>
-                  </div>
                 </div>
               </Card>
+
+            </div>
           </div>
+
+          <Card
+            bordered={false}
+            className='mt-4 shadow-sm'
+            title={
+              <Space size={10}>
+                <div className='flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-50 text-amber-500'>
+                  <TagsOutlined />
+                </div>
+                <div>
+                  <div className='font-semibold text-slate-900'>Variants & Merchandising</div>
+                  <div className='text-xs font-normal text-slate-400'>
+                    Keep size, color and bestseller controls visible in one glance.
+                  </div>
+                </div>
+              </Space>
+            }
+          >
+            <div className='grid gap-4 lg:grid-cols-3'>
+              <div className='rounded-2xl border border-slate-100 bg-slate-50 p-4'>
+                <div className='mb-2 flex items-center gap-2'>
+                  <BgColorsOutlined style={{ color: '#f97316' }} />
+                  <Text strong style={{ color: '#0f172a' }}>
+                    Product Colors
+                  </Text>
+                </div>
+                <div className='flex gap-2'>
+                  <Input
+                    size='large'
+                    value={customColor}
+                    onChange={(event) => setCustomColor(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        addCustomColor()
+                      }
+                    }}
+                    placeholder='Add color: Black, Red, #FF0000...'
+                  />
+                  <Button size='large' onClick={addCustomColor} icon={<PlusOutlined />}>
+                    Add
+                  </Button>
+                </div>
+                <div className='mt-3 flex flex-wrap gap-2'>
+                  {colors.length ? (
+                    colors.map((color) => (
+                      <Tag
+                        key={color}
+                        closable
+                        onClose={(event) => {
+                          event.preventDefault()
+                          toggleColor(color)
+                        }}
+                        style={{
+                          borderRadius: 999,
+                          padding: '6px 12px',
+                          borderColor: '#fed7aa',
+                          backgroundColor: '#fff7ed',
+                          color: '#ea580c',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {color}
+                      </Tag>
+                    ))
+                  ) : (
+                    <Text type='secondary'>No colors selected</Text>
+                  )}
+                </div>
+              </div>
+
+              <div className='rounded-2xl border border-slate-100 bg-slate-50 p-4'>
+                <div className='mb-2 flex items-center gap-2'>
+                  <TagsOutlined style={{ color: '#2563eb' }} />
+                  <Text strong style={{ color: '#0f172a' }}>
+                    Product Sizes
+                  </Text>
+                </div>
+                <div className='flex flex-wrap gap-2'>
+                  {DEFAULT_SIZES.map((size) => (
+                    <Button
+                      key={size}
+                      size='middle'
+                      type={sizes.includes(size) ? 'primary' : 'default'}
+                      className='!rounded-full !px-4'
+                      onClick={() => toggleSize(size)}
+                    >
+                      {size}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className='mt-3 flex gap-2'>
+                  <Input
+                    size='large'
+                    value={customSize}
+                    onChange={(event) => setCustomSize(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        addCustomSize()
+                      }
+                    }}
+                    placeholder='Add custom size: 3XL, 41...'
+                  />
+                  <Button size='large' onClick={addCustomSize} icon={<PlusOutlined />}>
+                    Add
+                  </Button>
+                </div>
+
+                <div className='mt-3 flex flex-wrap gap-2'>
+                  {sizes.length ? (
+                    sizes.map((size) => (
+                      <Tag
+                        key={size}
+                        closable
+                        onClose={(event) => {
+                          event.preventDefault()
+                          toggleSize(size)
+                        }}
+                        style={{
+                          borderRadius: 999,
+                          padding: '6px 12px',
+                          borderColor: '#bfdbfe',
+                          backgroundColor: '#eff6ff',
+                          color: '#2563eb',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {size}
+                      </Tag>
+                    ))
+                  ) : (
+                    <Text type='secondary'>No size selected</Text>
+                  )}
+                </div>
+              </div>
+
+              <div className='rounded-2xl border border-slate-100 bg-slate-50 p-4'>
+                <div className='mb-2 flex items-center gap-2'>
+                  <FireOutlined style={{ color: '#ec4899' }} />
+                  <Text strong style={{ color: '#0f172a' }}>
+                    Bestseller
+                  </Text>
+                </div>
+                <Text type='secondary' style={{ display: 'block', marginBottom: 16, lineHeight: 1.6 }}>
+                  Highlight this item in bestseller sections.
+                </Text>
+                <div className='flex items-center justify-between rounded-2xl border border-white bg-white px-4 py-3'>
+                  <Text style={{ color: '#475569', fontWeight: 500 }}>
+                    {bestseller ? 'Enabled' : 'Disabled'}
+                  </Text>
+                  <Switch checked={bestseller} onChange={setBestseller} />
+                </div>
+              </div>
+            </div>
+          </Card>
 
           <Card bordered={false} className='mt-6 shadow-sm'>
             <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>

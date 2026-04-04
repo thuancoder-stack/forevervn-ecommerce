@@ -290,16 +290,46 @@ const Banners = ({ token, backendUrl: backendUrlFromProps }) => {
         title: 'Banner',
         key: 'banner',
         render: (_, item) => (
-          <div className='flex items-center gap-3'>
-            <div className='h-9 w-14 overflow-hidden rounded-lg border border-slate-100 bg-slate-50'>
-              <img className='h-full w-full object-cover' src={item.image} alt={item.title || 'Banner'} width={56} height={36} />
+          <div className='flex items-start gap-3'>
+            <div
+              className='overflow-hidden rounded-xl border border-slate-100 bg-slate-50 shrink-0'
+              style={{ width: 64, height: 40, minWidth: 64 }}
+            >
+              <img
+                className='h-full w-full object-cover'
+                src={item.image}
+                alt={item.title || 'Banner'}
+                width={64}
+                height={40}
+                style={{ width: 64, height: 40, objectFit: 'cover' }}
+              />
             </div>
-            <div className='min-w-0'>
-              <Text strong style={{ color: '#0f172a' }}>
+            <div className='min-w-0 pt-0.5'>
+              <Text
+                strong
+                style={{
+                  color: '#0f172a',
+                  lineHeight: 1.35,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
                 {item.title || 'Untitled banner'}
               </Text>
               <div>
-                <Text type='secondary' style={{ fontSize: 12 }}>
+                <Text
+                  type='secondary'
+                  style={{
+                    fontSize: 12,
+                    display: 'inline-block',
+                    maxWidth: 260,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   {item.link || 'No destination link'}
                 </Text>
               </div>

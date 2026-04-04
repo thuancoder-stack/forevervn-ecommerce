@@ -23,6 +23,16 @@ import 'react-toastify/dist/ReactToastify.css'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { backendUrl } from './config'
 
+const toastProps = {
+  autoClose: 1000,
+  closeButton: false,
+  hideProgressBar: true,
+  newestOnTop: true,
+  position: 'top-right',
+  toastClassName: () =>
+    'mb-3 rounded-[18px] border border-white/65 bg-white/76 px-4 py-3 text-sm text-slate-500 shadow-[0_10px_22px_rgba(15,23,42,0.06)] backdrop-blur-md',
+  bodyClassName: () => 'p-0 font-medium',
+}
 
 const App = () => {
   const [token, setToken] = useState(() => localStorage.getItem('token') || '')
@@ -41,7 +51,7 @@ const App = () => {
     return (
       <div className='min-h-screen bg-[var(--admin-bg)] text-[var(--admin-text)] transition-colors duration-300'>
         <ToastSoundBridge />
-        <ToastContainer />
+        <ToastContainer {...toastProps} />
         <Login setToken={setToken} />
       </div>
     )
@@ -50,7 +60,7 @@ const App = () => {
   return (
     <div className='min-h-screen bg-[var(--admin-bg)] text-[var(--admin-text)] transition-colors duration-300'>
       <ToastSoundBridge />
-      <ToastContainer />
+      <ToastContainer {...toastProps} />
       <Navbar setToken={setToken} />
 
       <div className='flex min-h-[calc(100vh-81px)] w-full'>
