@@ -29,6 +29,59 @@ const getMailTransporter = () => {
     });
 };
 
+const trimAddressField = (value) => String(value || '').trim();
+
+const sanitizeAddressPayload = (address = {}) => ({
+    label: trimAddressField(address.label),
+    fullName: trimAddressField(address.fullName),
+    email: trimAddressField(address.email).toLowerCase(),
+    phone: trimAddressField(address.phone),
+    province: trimAddressField(address.province),
+    district: trimAddressField(address.district),
+    ward: trimAddressField(address.ward),
+    addressDetail: trimAddressField(address.addressDetail),
+    isDefault: Boolean(address.isDefault),
+});
+
+const isValidAddressPayload = (address) => {
+    if (!address) return false;
+
+    const requiredFields = [
+        'fullName',
+        'email',
+        'phone',
+        'province',
+        'district',
+        'ward',
+        'addressDetail',
+    ];
+
+    if (!validator.isEmail(address.email || '')) {
+        return false;
+    }
+
+    return requiredFields.every((field) => trimAddressField(address[field]).length > 0);
+};
+
+const normalizeAddressBook = (addresses = [], preferredDefaultId = '') => {
+    const normalized = addresses.map((address, index) => ({
+        ...address,
+        label: trimAddressField(address?.label) || `Address ${index + 1}`,
+        isDefault: false,
+    }));
+
+    if (normalized.length === 0) return normalized;
+
+    const defaultIndex = preferredDefaultId
+        ? normalized.findIndex((address) => String(address?._id) === String(preferredDefaultId))
+        : normalized.findIndex((address) => Boolean(address?.isDefault));
+
+    const safeIndex = defaultIndex >= 0 ? defaultIndex : 0;
+    normalized[safeIndex].isDefault = true;
+
+    return normalized;
+};
+
 const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -211,13 +264,147 @@ const getCurrentUser = async (req, res) => {
             return res.json({ success: false, message: 'Missing user id' });
         }
 
-        const user = await userModel.findById(userId).select('_id name email').lean();
+        const user = await userModel
+            .findById(userId)
+            .select('_id name email role addresses')
+            .lean();
 
         if (!user) {
             return res.json({ success: false, message: 'User not found' });
         }
 
         return res.json({ success: true, user });
+    } catch (error) {
+        console.log(error);
+        return res.json({ success: false, message: error.message });
+    }
+};
+
+const saveUserAddress = async (req, res) => {
+    try {
+        const { userId, addressId, address, setAsDefault } = req.body;
+
+        if (!userId) {
+            return res.json({ success: false, message: 'Missing user id' });
+        }
+
+        const user = await userModel.findById(userId);
+        if (!user) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        const sanitizedAddress = sanitizeAddressPayload(address);
+        if (!isValidAddressPayload(sanitizedAddress)) {
+            return res.json({ success: false, message: 'Address information is incomplete' });
+        }
+
+        const currentAddresses = Array.isArray(user.addresses)
+            ? user.addresses.map((item) => item.toObject())
+            : [];
+
+        const nextAddresses = [...currentAddresses];
+        const nextDefaultId = setAsDefault ? String(addressId || '') : '';
+        const existingIndex = nextAddresses.findIndex(
+            (item) => String(item?._id) === String(addressId || ''),
+        );
+
+        if (existingIndex >= 0) {
+            nextAddresses[existingIndex] = {
+                ...nextAddresses[existingIndex],
+                ...sanitizedAddress,
+                isDefault: setAsDefault || Boolean(nextAddresses[existingIndex]?.isDefault),
+            };
+        } else {
+            nextAddresses.push({
+                ...sanitizedAddress,
+                isDefault: Boolean(setAsDefault) || nextAddresses.length === 0,
+            });
+        }
+
+        user.addresses = normalizeAddressBook(
+            nextAddresses,
+            nextDefaultId || (setAsDefault ? String(addressId || '') : ''),
+        );
+        await user.save();
+
+        return res.json({
+            success: true,
+            message: existingIndex >= 0 ? 'Address updated successfully' : 'Address saved successfully',
+            addresses: user.addresses,
+        });
+    } catch (error) {
+        console.log(error);
+        return res.json({ success: false, message: error.message });
+    }
+};
+
+const deleteUserAddress = async (req, res) => {
+    try {
+        const { userId, addressId } = req.body;
+
+        if (!userId || !addressId) {
+            return res.json({ success: false, message: 'Missing address information' });
+        }
+
+        const user = await userModel.findById(userId);
+        if (!user) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        const currentAddresses = Array.isArray(user.addresses)
+            ? user.addresses.map((item) => item.toObject())
+            : [];
+
+        const filteredAddresses = currentAddresses.filter(
+            (item) => String(item?._id) !== String(addressId),
+        );
+
+        user.addresses = normalizeAddressBook(filteredAddresses);
+        await user.save();
+
+        return res.json({
+            success: true,
+            message: 'Address deleted successfully',
+            addresses: user.addresses,
+        });
+    } catch (error) {
+        console.log(error);
+        return res.json({ success: false, message: error.message });
+    }
+};
+
+const setDefaultUserAddress = async (req, res) => {
+    try {
+        const { userId, addressId } = req.body;
+
+        if (!userId || !addressId) {
+            return res.json({ success: false, message: 'Missing address information' });
+        }
+
+        const user = await userModel.findById(userId);
+        if (!user) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        const currentAddresses = Array.isArray(user.addresses)
+            ? user.addresses.map((item) => item.toObject())
+            : [];
+        const hasTarget = currentAddresses.some(
+            (item) => String(item?._id) === String(addressId),
+        );
+
+        if (!hasTarget) {
+            return res.json({ success: false, message: 'Address not found' });
+        }
+
+        user.addresses = normalizeAddressBook(currentAddresses, String(addressId));
+        await user.save();
+
+        return res.json({
+            success: true,
+            message: 'Default address updated successfully',
+            addresses: user.addresses,
+        });
     } catch (error) {
         console.log(error);
         return res.json({ success: false, message: error.message });
@@ -414,6 +601,9 @@ export {
     sendResetOtp,
     resetPasswordWithOtp,
     getCurrentUser,
+    saveUserAddress,
+    deleteUserAddress,
+    setDefaultUserAddress,
     loginAdmin,
     getAllUsers,
     deleteUser,

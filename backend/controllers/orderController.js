@@ -2,6 +2,60 @@ import orderModel from '../models/orderModel.js';
 import userModel from '../models/userModel.js';
 import importBatchModel from '../models/importBatchModel.js';
 import logAction from '../utils/logger.js';
+import { buildInventoryFilter, getAvailableStock, normalizeVariantColor } from '../utils/inventory.js';
+
+const buildVariantKey = ({ productId, size, color }) =>
+    `${String(productId)}__${String(size || 'Free')}__${normalizeVariantColor(color)}`;
+
+const normalizeOrderItems = (items = []) =>
+    items
+        .map((item) => ({
+            ...item,
+            _id: String(item?._id || item?.id || ''),
+            size: String(item?.size || 'Free'),
+            color: normalizeVariantColor(item?.color),
+            quantity: Number(item?.quantity) || 0,
+            price: Number(item?.price) || 0,
+        }))
+        .filter((item) => item._id && item.quantity > 0);
+
+const validateAddress = (address = {}) => {
+    const requiredFields = [
+        'fullName',
+        'email',
+        'phone',
+        'province',
+        'district',
+        'ward',
+        'addressDetail',
+    ];
+
+    return requiredFields.every((field) => String(address?.[field] || '').trim().length > 0);
+};
+
+const buildRequestedVariants = (items = []) => {
+    const variantMap = new Map();
+
+    items.forEach((item) => {
+        const key = buildVariantKey({
+            productId: item._id,
+            size: item.size,
+            color: item.color,
+        });
+
+        const existing = variantMap.get(key) || {
+            productId: item._id,
+            size: item.size,
+            color: item.color,
+            quantity: 0,
+        };
+
+        existing.quantity += Number(item.quantity) || 0;
+        variantMap.set(key, existing);
+    });
+
+    return Array.from(variantMap.values());
+};
 
 const placeOrder = async (req, res) => {
     try {
@@ -11,18 +65,19 @@ const placeOrder = async (req, res) => {
             return res.json({ success: false, message: 'Missing user id' });
         }
 
-        // Smart Voucher "BANMOI" Validation
         if (voucherCode && voucherCode.toUpperCase() === 'BANMOI') {
             const completedCount = await orderModel.countDocuments({
                 userId,
-                status: 'Delivered' // Chỉ tính đơn đã giao thành công
+                status: 'Delivered'
             });
             if (completedCount > 0) {
-                return res.json({ success: false, message: 'Mã BANMOI chỉ áp dụng cho đơn hàng đầu tiên hoàn thành!' });
+                return res.json({ success: false, message: 'BANMOI only works for the first completed order' });
             }
         }
 
-        if (!Array.isArray(items) || items.length === 0) {
+        const normalizedItems = normalizeOrderItems(items);
+
+        if (normalizedItems.length === 0) {
             return res.json({ success: false, message: 'Cart is empty' });
         }
 
@@ -30,46 +85,73 @@ const placeOrder = async (req, res) => {
             return res.json({ success: false, message: 'Invalid order amount' });
         }
 
-        if (!address || typeof address !== 'object') {
+        if (!address || typeof address !== 'object' || !validateAddress(address)) {
             return res.json({ success: false, message: 'Address is required' });
         }
 
+        const requestedVariants = buildRequestedVariants(normalizedItems);
+
+        for (const variant of requestedVariants) {
+            const availableStock = await getAvailableStock(variant);
+
+            if (availableStock < variant.quantity) {
+                if (availableStock <= 0) {
+                    return res.json({
+                        success: false,
+                        message: `${variant.size} / ${variant.color} is out of stock`,
+                    });
+                }
+
+                return res.json({
+                    success: false,
+                    message: `Only ${availableStock} item(s) left for ${variant.size} / ${variant.color}`,
+                });
+            }
+        }
+
+        const deductionPlan = [];
         let totalCOGS = 0;
 
-        // Perform FIFO deduction
-        for (let item of items) {
-            let requiredQty = item.quantity;
-            let itemCOGS = 0;
+        for (const variant of requestedVariants) {
+            let requiredQty = variant.quantity;
+            const batches = await importBatchModel
+                .find(buildInventoryFilter(variant))
+                .sort({ importDate: 1 });
 
-            const batches = await importBatchModel.find({
-                productId: item._id,
-                size: item.size,
-                color: item.color || 'Any',
-                status: 'Active',
-                remainingQty: { $gt: 0 }
-            }).sort({ importDate: 1 });
-
-            for (let batch of batches) {
+            for (const batch of batches) {
                 if (requiredQty <= 0) break;
 
-                const deductQty = Math.min(batch.remainingQty, requiredQty);
-                batch.remainingQty -= deductQty;
-                if (batch.remainingQty === 0) batch.status = 'Depleted';
-                
-                await batch.save();
+                const deductQty = Math.min(Number(batch.remainingQty) || 0, requiredQty);
+                if (deductQty <= 0) continue;
 
-                itemCOGS += deductQty * batch.costPrice;
+                deductionPlan.push({
+                    batchId: batch._id,
+                    remainingQty: (Number(batch.remainingQty) || 0) - deductQty,
+                    status: (Number(batch.remainingQty) || 0) - deductQty <= 0 ? 'Depleted' : 'Active',
+                });
+
+                totalCOGS += deductQty * (Number(batch.costPrice) || 0);
                 requiredQty -= deductQty;
             }
 
-            totalCOGS += itemCOGS;
-            // Note: If requiredQty > 0, it means we oversold past tracked inventory. 
-            // In a real system, we might reject the order or fallback costPrice.
+            if (requiredQty > 0) {
+                return res.json({
+                    success: false,
+                    message: 'Inventory changed while placing the order. Please review your cart again.',
+                });
+            }
+        }
+
+        for (const update of deductionPlan) {
+            await importBatchModel.findByIdAndUpdate(update.batchId, {
+                remainingQty: update.remainingQty,
+                status: update.status,
+            });
         }
 
         const orderData = {
             userId,
-            items,
+            items: normalizedItems,
             amount: Number(amount),
             cogs: totalCOGS,
             profit: Number(amount) - totalCOGS,
@@ -153,7 +235,6 @@ const cancelOrder = async (req, res) => {
             return res.json({ success: false, message: 'Order not found' });
         }
 
-        // Check if the order belongs to the requester
         if (order.userId.toString() !== userId.toString()) {
             return res.json({ success: false, message: 'Not authorized' });
         }
@@ -165,7 +246,6 @@ const cancelOrder = async (req, res) => {
 
         await orderModel.findByIdAndUpdate(orderId, { status: 'Cancelled' });
         
-        // Log user cancellation
         await logAction(userId, 'Customer', 'CANCEL_ORDER', `Customer cancelled order #${orderId.slice(-8)}`, orderId);
         
         res.json({ success: true, message: 'Order cancelled successfully' });

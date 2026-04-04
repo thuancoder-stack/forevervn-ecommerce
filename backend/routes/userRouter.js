@@ -7,6 +7,9 @@ import {
     sendResetOtp,
     resetPasswordWithOtp,
     getCurrentUser,
+    saveUserAddress,
+    deleteUserAddress,
+    setDefaultUserAddress,
     loginAdmin,
     getAllUsers,
     deleteUser,
@@ -23,6 +26,9 @@ userRouter.post('/login', loginUser);
 userRouter.post('/forgot-password', sendResetOtp);
 userRouter.post('/reset-password', resetPasswordWithOtp);
 userRouter.post('/me', authUser, getCurrentUser);
+userRouter.post('/address/save', authUser, saveUserAddress);
+userRouter.post('/address/delete', authUser, deleteUserAddress);
+userRouter.post('/address/default', authUser, setDefaultUserAddress);
 userRouter.post('/admin/login', loginAdmin);
 userRouter.get('/list', adminAuth, getAllUsers);
 userRouter.post('/delete', adminAuth, deleteUser);

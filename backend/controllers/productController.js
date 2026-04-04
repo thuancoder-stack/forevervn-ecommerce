@@ -6,6 +6,7 @@ import { getTikTokHDLink } from '../utils/tiktok.js';
 import fs from 'fs';
 import Papa from 'papaparse';
 import iconv from 'iconv-lite';
+import { getAvailableStock, normalizeVariantColor } from '../utils/inventory.js';
 
 const addProduct = async (req, res) => {
     try {
@@ -412,8 +413,13 @@ const getInventory = async (req, res) => {
 const getProductStock = async (req, res) => {
     try {
         const { id } = req.params;
-        const batches = await importBatchModel.find({ productId: id, status: 'Active' });
-        const totalStock = batches.reduce((sum, batch) => sum + (Number(batch.remainingQty) || 0), 0);
+        const size = String(req.query?.size || '').trim();
+        const rawColor = String(req.query?.color || '').trim();
+        const totalStock = await getAvailableStock({
+            productId: id,
+            size: size || undefined,
+            color: rawColor ? normalizeVariantColor(rawColor) : undefined,
+        });
         
         res.json({ success: true, stock: totalStock });
     } catch (error) {
