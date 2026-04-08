@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
+import { Menu, Search, ShoppingBag, User, X } from 'lucide-react';
 import { assets } from '../assets/assets';
 import { ShopContext } from '../context/ShopContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -77,6 +78,9 @@ const Navbar = () => {
                 : 'text-slate-500 hover:-translate-y-0.5 hover:bg-slate-900 hover:text-white'
         }`;
 
+    const roundActionClass =
+        'rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-950';
+
     return (
         <>
             <header className="fixed inset-x-0 top-0 z-50">
@@ -100,9 +104,7 @@ const Navbar = () => {
                                     type="button"
                                     onClick={() => setLanguage('vi')}
                                     className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${
-                                        isVietnamese
-                                            ? 'bg-slate-900 text-white'
-                                            : 'text-slate-500'
+                                        isVietnamese ? 'bg-slate-900 text-white' : 'text-slate-500'
                                     }`}
                                     aria-label="Switch to Vietnamese"
                                 >
@@ -112,9 +114,7 @@ const Navbar = () => {
                                     type="button"
                                     onClick={() => setLanguage('en')}
                                     className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${
-                                        !isVietnamese
-                                            ? 'bg-slate-900 text-white'
-                                            : 'text-slate-500'
+                                        !isVietnamese ? 'bg-slate-900 text-white' : 'text-slate-500'
                                     }`}
                                     aria-label="Switch to English"
                                 >
@@ -124,41 +124,25 @@ const Navbar = () => {
 
                             <button
                                 onClick={() => setShowSearch(!showSearch)}
-                                className="rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-950"
+                                className={roundActionClass}
                                 type="button"
                                 aria-label={copy.toggleSearch}
                             >
-                                <img
-                                    src={assets.search_icon}
-                                    className="w-4 sm:w-[18px]"
-                                    alt={copy.toggleSearch}
-                                />
+                                <Search className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={2.1} />
                             </button>
 
                             <div className="group relative hidden sm:block">
                                 {token ? (
                                     <button
                                         type="button"
-                                        className="rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300"
+                                        className={roundActionClass}
                                         aria-label={copy.account}
                                     >
-                                        <img
-                                            className="w-4 sm:w-[18px]"
-                                            src={assets.profile_icon}
-                                            alt={copy.account}
-                                        />
+                                        <User className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={2.1} />
                                     </button>
                                 ) : (
-                                    <Link
-                                        to="/login"
-                                        className="rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300"
-                                        aria-label={copy.login}
-                                    >
-                                        <img
-                                            className="w-4 sm:w-[18px]"
-                                            src={assets.profile_icon}
-                                            alt={copy.login}
-                                        />
+                                    <Link to="/login" className={roundActionClass} aria-label={copy.login}>
+                                        <User className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={2.1} />
                                     </Link>
                                 )}
 
@@ -194,14 +178,10 @@ const Navbar = () => {
                             <Link
                                 to="/cart"
                                 data-cart-target="true"
-                                className="relative rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300"
+                                className={`relative ${roundActionClass}`}
                                 aria-label={copy.cart}
                             >
-                                <img
-                                    src={assets.cart_icon}
-                                    className="w-4 min-w-4 sm:w-[18px] sm:min-w-[18px]"
-                                    alt={copy.cart}
-                                />
+                                <ShoppingBag className="h-4 w-4 min-w-4 sm:h-[18px] sm:w-[18px] sm:min-w-[18px]" strokeWidth={2.1} />
                                 {!hideCartBadge && cartCount > 0 && (
                                     <p className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1 text-[10px] font-semibold text-white">
                                         {cartCount}
@@ -211,11 +191,11 @@ const Navbar = () => {
 
                             <button
                                 onClick={() => setVisible(true)}
-                                className="rounded-full border border-[var(--border)] bg-white/90 p-3 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-slate-300 md:hidden"
+                                className={`${roundActionClass} md:hidden`}
                                 type="button"
                                 aria-label={copy.openMenu}
                             >
-                                <img src={assets.menu_icon} className="w-4" alt={copy.openMenu} />
+                                <Menu className="h-4 w-4" strokeWidth={2.1} />
                             </button>
                         </div>
                     </div>
@@ -243,7 +223,7 @@ const Navbar = () => {
                             type="button"
                             aria-label={copy.closeMenu}
                         >
-                            <img src={assets.cross_icon} className="w-3" alt={copy.closeMenu} />
+                            <X className="h-3 w-3" strokeWidth={2.4} />
                         </button>
                     </div>
 

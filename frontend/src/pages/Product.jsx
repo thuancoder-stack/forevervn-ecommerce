@@ -29,6 +29,7 @@ const copyByLanguage = {
         chooseColorToast: 'Vui l\u00f2ng ch\u1ecdn m\u00e0u',
         checkingStockToast: '\u0110ang ki\u1ec3m tra t\u1ed3n kho, vui l\u00f2ng ch\u1edd m\u1ed9t ch\u00fat',
         variantOutOfStockToast: 'Phi\u00ean b\u1ea3n n\u00e0y \u0111\u00e3 h\u1ebft h\u00e0ng',
+        limitToast: (count) => `B\u1ea1n \u0111ang \u0111\u1eb7t qu\u00e1 s\u1ed1 l\u01b0\u1ee3ng. Ch\u1ec9 c\u00f2n ${count} s\u1ea3n ph\u1ea9m.`,
         unableToAdd: 'Kh\u00f4ng th\u1ec3 th\u00eam s\u1ea3n ph\u1ea9m n\u00e0y',
         addedToCart: '\u0110\u00e3 th\u00eam v\u00e0o gi\u1ecf',
         addToCart: 'Th\u00eam v\u00e0o gi\u1ecf',
@@ -59,6 +60,7 @@ const copyByLanguage = {
         chooseColorToast: 'Please choose a color',
         checkingStockToast: 'Checking stock, please wait a moment',
         variantOutOfStockToast: 'This variant is out of stock',
+        limitToast: (count) => `You are ordering too many items. Only ${count} left.`,
         unableToAdd: 'Unable to add this item',
         addedToCart: 'Added to cart',
         addToCart: 'Add To Cart',
@@ -347,13 +349,13 @@ const Product = () => {
         if (firstAvailable.color !== (color || 'Any')) setColor(firstAvailable.color);
     }, [color, size, variantOptions, variantStocks]);
 
-    const remainingStock =
+    const availableToAdd =
         selectedVariantStock === null ? null : Math.max(selectedVariantStock - currentVariantQty, 0);
     const stockStatusLabel =
         selectedVariantStock === null || variantLoading
             ? t.checkingAvailability
-            : remainingStock > 0
-              ? t.inStock(remainingStock)
+            : selectedVariantStock > 0
+              ? t.inStock(selectedVariantStock)
               : hasAnyAvailableVariant
                 ? t.selectedVariantOutOfStock
                 : t.outOfStock;
@@ -391,13 +393,17 @@ const Product = () => {
             return false;
         }
 
-        if (remainingStock === null) {
+        if (selectedVariantStock === null) {
             toast.info(t.checkingStockToast);
             return false;
         }
 
-        if (remainingStock <= 0) {
-            toast.error(t.variantOutOfStockToast);
+        if (availableToAdd <= 0) {
+            if (Number(selectedVariantStock || 0) > 0) {
+                toast.error(t.limitToast(selectedVariantStock));
+            } else {
+                toast.error(t.variantOutOfStockToast);
+            }
             return false;
         }
 
@@ -606,7 +612,11 @@ const Product = () => {
         const result = await addToCart(productData._id ?? productData.id, size, color || 'Any');
 
         if (!result?.success) {
-            toast.error(result?.message || t.unableToAdd);
+            if (Number(result?.stock || 0) > 0) {
+                toast.error(t.limitToast(result.stock));
+            } else {
+                toast.error(result?.message || t.unableToAdd);
+            }
             return;
         }
 
@@ -687,14 +697,14 @@ const Product = () => {
                             <div className="mt-3 flex flex-wrap items-center gap-3">
                                 <span
                                     className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-                                            remainingStock !== null && remainingStock > 0
+                                            selectedVariantStock !== null && selectedVariantStock > 0
                                             ? 'bg-emerald-100 text-emerald-700'
                                             : 'bg-rose-100 text-rose-700'
                                     }`}
                                 >
                                     <div
                                         className={`h-2 w-2 rounded-full ${
-                                            remainingStock !== null && remainingStock > 0
+                                            selectedVariantStock !== null && selectedVariantStock > 0
                                                 ? 'bg-emerald-500 animate-pulse'
                                                 : 'bg-rose-500'
                                         }`}
@@ -842,16 +852,16 @@ const Product = () => {
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                             <button
                                 onClick={handleAddToCart}
-                                disabled={remainingStock === null || remainingStock <= 0}
+                                disabled={availableToAdd === null || availableToAdd <= 0}
                                 className="rounded-full bg-slate-900 px-8 py-4 text-sm font-semibold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(15,23,42,0.16)] hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
                                 type="button"
                             >
-                                {remainingStock !== null && remainingStock > 0 ? t.addToCart : t.outOfStock}
+                                {availableToAdd !== null && availableToAdd > 0 ? t.addToCart : t.outOfStock}
                             </button>
 
                             <button
                                 onClick={handleBuyNow}
-                                disabled={remainingStock === null || remainingStock <= 0}
+                                disabled={availableToAdd === null || availableToAdd <= 0}
                                 className="rounded-full border border-slate-900 bg-white px-8 py-4 text-sm font-semibold uppercase tracking-[0.16em] text-slate-900 shadow-[0_18px_36px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300 disabled:shadow-none"
                                 type="button"
                             >

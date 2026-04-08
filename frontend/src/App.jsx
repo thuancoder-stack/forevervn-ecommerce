@@ -29,11 +29,11 @@ const App = () => {
         closeButton={false}
         hideProgressBar
         newestOnTop
-        position='top-right'
+        position='top-center'
         toastClassName={() =>
-          'section-shell mb-3 rounded-[20px] border border-white/65 bg-white/74 px-4 py-3 text-sm text-slate-500 shadow-[0_10px_22px_rgba(15,23,42,0.06)] backdrop-blur-md'
+          'fv-toast-pill section-shell mb-3 rounded-full border border-white/80 bg-white/92 px-4 py-3 text-sm text-slate-900 shadow-[0_14px_34px_rgba(15,23,42,0.12)]'
         }
-        bodyClassName={() => 'p-0 font-medium'}
+        bodyClassName={() => 'p-0 font-semibold leading-6 text-slate-900'}
       />
 
       <Navbar />

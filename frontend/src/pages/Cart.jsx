@@ -41,6 +41,8 @@ const copy = {
         checkout: 'Ti\u1ebfn H\u00e0nh Thanh To\u00e1n',
         quantityExceeded: 'S\u1ed1 l\u01b0\u1ee3ng v\u01b0\u1ee3t qu\u00e1 t\u1ed3n kho',
         remove: 'X\u00f3a',
+        decrease: 'Gi\u1ea3m s\u1ed1 l\u01b0\u1ee3ng',
+        increase: 'T\u0103ng s\u1ed1 l\u01b0\u1ee3ng',
     },
     en: {
         title1: 'YOUR',
@@ -70,6 +72,8 @@ const copy = {
         checkout: 'Proceed To Checkout',
         quantityExceeded: 'Quantity exceeds stock',
         remove: 'Remove',
+        decrease: 'Decrease quantity',
+        increase: 'Increase quantity',
     },
 };
 const Cart = () => {
@@ -175,17 +179,42 @@ const Cart = () => {
     const hasStockIssues = stockIssues.length > 0;
 
     const handleQuantityChange = async (item, nextValue) => {
-        const numericValue = Number(nextValue);
+        const sanitizedValue = String(nextValue ?? '').replace(/\D/g, '');
+        const numericValue = Number(sanitizedValue);
+        const availableStock = Object.prototype.hasOwnProperty.call(stockMap, item.key)
+            ? Number(stockMap[item.key] || 0)
+            : null;
 
         if (!nextValue || numericValue <= 0) {
             await updateCartQty(item._id, item.size, item.color, 0);
             return;
         }
 
+        if (availableStock !== null && availableStock <= 0) {
+            await updateCartQty(item._id, item.size, item.color, 0);
+            toast.error(t.soldOutMessage);
+            return;
+        }
+
+        if (availableStock !== null && numericValue > availableStock) {
+            const result = await updateCartQty(item._id, item.size, item.color, availableStock);
+            toast.error(t.limitMessage(availableStock));
+            return result;
+        }
+
         const result = await updateCartQty(item._id, item.size, item.color, numericValue);
         if (!result?.success) {
-            toast.error(result?.message || t.quantityExceeded);
+            if (Number(result?.stock || 0) > 0) {
+                toast.error(t.limitMessage(result.stock));
+            } else {
+                toast.error(result?.message || t.quantityExceeded);
+            }
         }
+    };
+
+    const handleStepQuantity = async (item, delta) => {
+        const nextValue = Math.max(0, Number(item.quantity || 0) + delta);
+        await handleQuantityChange(item, String(nextValue));
     };
 
     return (
@@ -286,14 +315,38 @@ const Cart = () => {
                                     </button>
 
                                     <div className="flex items-center gap-3 sm:gap-4">
-                                        <input
-                                            onChange={(e) => handleQuantityChange(item, e.target.value)}
-                                            className="w-20 rounded-full border border-[var(--border)] px-4 py-3 text-center text-sm outline-none"
-                                            type="number"
-                                            min={0}
-                                            max={availableStock === null ? undefined : Math.max(availableStock, 0)}
-                                            value={item.quantity}
-                                        />
+                                        <div className="flex items-center rounded-full border border-[var(--border)] bg-white px-2 py-2 shadow-sm">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleStepQuantity(item, -1)}
+                                                className="flex h-9 w-9 items-center justify-center rounded-full text-lg font-semibold text-slate-700 hover:bg-slate-100"
+                                                title={t.decrease}
+                                                aria-label={t.decrease}
+                                            >
+                                                -
+                                            </button>
+
+                                            <input
+                                                onChange={(e) => handleQuantityChange(item, e.target.value)}
+                                                className="w-14 bg-transparent px-2 text-center text-sm font-semibold outline-none"
+                                                type="text"
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                                min={0}
+                                                max={availableStock === null ? undefined : Math.max(availableStock, 0)}
+                                                value={item.quantity}
+                                            />
+
+                                            <button
+                                                type="button"
+                                                onClick={() => handleStepQuantity(item, 1)}
+                                                className="flex h-9 w-9 items-center justify-center rounded-full text-lg font-semibold text-slate-700 hover:bg-slate-100"
+                                                title={t.increase}
+                                                aria-label={t.increase}
+                                            >
+                                                +
+                                            </button>
+                                        </div>
 
                                         <button
                                             onClick={() => removeFromCart(item._id, item.size, item.color)}

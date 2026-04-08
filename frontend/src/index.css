@@ -1,8 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --bg: #f6f3ee;
@@ -112,6 +110,58 @@ button:disabled {
 input::placeholder,
 textarea::placeholder {
   color: #98a2b3;
+}
+
+.Toastify__toast-container--top-center {
+  width: auto !important;
+  max-width: min(92vw, 420px) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  padding: 0 !important;
+  top: 14px !important;
+}
+
+.fv-toast-pill.Toastify__toast,
+.Toastify__toast.fv-toast-pill {
+  min-height: 54px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #162033 !important;
+  border: 1px solid rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.14) !important;
+  backdrop-filter: blur(14px) !important;
+  padding: 0.75rem 1rem !important;
+}
+
+.fv-toast-pill .Toastify__toast-body {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #162033 !important;
+  font-weight: 600 !important;
+  justify-content: center !important;
+}
+
+.fv-toast-pill .Toastify__toast-body > div {
+  color: #162033 !important;
+  text-align: center !important;
+}
+
+.fv-toast-pill .Toastify__toast-icon {
+  margin-inline-end: 10px !important;
+}
+
+@media (max-width: 640px) {
+  .Toastify__toast-container--top-center {
+    top: auto !important;
+    bottom: 18px !important;
+    max-width: min(92vw, 360px) !important;
+  }
+
+  .fv-toast-pill.Toastify__toast,
+  .Toastify__toast.fv-toast-pill {
+    min-height: 50px !important;
+    padding: 0.7rem 0.9rem !important;
+  }
 }
 
 @media (min-width: 640px) {
