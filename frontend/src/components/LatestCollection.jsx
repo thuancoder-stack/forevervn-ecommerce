@@ -3,6 +3,11 @@ import { ShopContext } from '../context/ShopContext';
 import Title from './Title';
 import ProductItem from './ProductItem';
 import { useLanguage } from '../context/LanguageContext';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation } from 'swiper/modules';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import 'swiper/css';
+import 'swiper/css/navigation';
 
 const LatestCollection = () => {
     const { products } = useContext(ShopContext);
@@ -32,26 +37,50 @@ const LatestCollection = () => {
     );
 
     return (
-        <section className='py-10 sm:py-14'>
-            <div className="mb-8 text-center sm:mb-10">
+        <section className='py-12 sm:py-16'>
+            <div className="mb-10 text-center sm:mb-12">
                 <Title text1={copy.title1} text2={copy.title2} />
+                <p className='mx-auto mt-4 max-w-2xl text-center text-sm leading-relaxed text-[#8a7f72] sm:text-base'>
+                    {copy.description}
+                </p>
             </div>
 
-            <p className='mx-auto mb-8 max-w-2xl text-center text-sm leading-7 text-slate-500 sm:mb-10 sm:text-base'>
-                {copy.description}
-            </p>
+            <div className='relative group px-2 sm:px-4'>
+                <Swiper
+                    modules={[Navigation]}
+                    navigation={{
+                        nextEl: '.latest-next',
+                        prevEl: '.latest-prev',
+                    }}
+                    spaceBetween={16}
+                    slidesPerView={2}
+                    breakpoints={{
+                        640: { slidesPerView: 3, spaceBetween: 20 },
+                        1024: { slidesPerView: 4, spaceBetween: 24 },
+                        1280: { slidesPerView: 5, spaceBetween: 24 }
+                    }}
+                    className="!pb-6"
+                >
+                    {latestProducts.map((item, index) => (
+                        <SwiperSlide key={index} className="h-auto">
+                            <ProductItem
+                                id={item._id}
+                                image={item.image}
+                                name={item.name}
+                                price={item.price}
+                                oldPrice={item.oldPrice}
+                            />
+                        </SwiperSlide>
+                    ))}
+                </Swiper>
 
-            <div className='grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'>
-                {latestProducts.map((item, index) => (
-                    <ProductItem
-                        key={index}
-                        id={item._id}
-                        image={item.image}
-                        name={item.name}
-                        price={item.price}
-                        oldPrice={item.oldPrice}
-                    />
-                ))}
+                {/* Navigation Buttons */}
+                <button className="latest-prev absolute -left-2 sm:-left-6 top-[35%] z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center text-[#1a1a1a] transition-all hover:scale-110 disabled:opacity-0 disabled:cursor-not-allowed">
+                    <ChevronLeft strokeWidth={1} className="h-8 w-8 sm:h-10 sm:w-10 opacity-70 hover:opacity-100" />
+                </button>
+                <button className="latest-next absolute -right-2 sm:-right-6 top-[35%] z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center text-[#1a1a1a] transition-all hover:scale-110 disabled:opacity-0 disabled:cursor-not-allowed">
+                    <ChevronRight strokeWidth={1} className="h-8 w-8 sm:h-10 sm:w-10 opacity-70 hover:opacity-100" />
+                </button>
             </div>
         </section>
     );

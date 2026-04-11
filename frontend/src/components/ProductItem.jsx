@@ -4,14 +4,14 @@ import { formatMoney } from '../lib/locale';
 
 const copyByLanguage = {
     vi: {
-        collection: 'B\u1ed8 S\u01afU T\u1eacP FOREVER',
-        view: 'XEM',
-        sale: 'GI\u1ea2M',
+        collection: 'BỘ SƯU TẬP FOREVER',
+        view: 'XEM CHI TIẾT',
+        sale: 'VỪA GIẢM',
     },
     en: {
         collection: 'FOREVER COLLECTION',
-        view: 'VIEW',
-        sale: 'SALE',
+        view: 'QUICK VIEW',
+        sale: 'MARKDOWN',
     },
 };
 
@@ -25,44 +25,47 @@ const ProductItem = ({ id, image, name, price, oldPrice }) => {
 
     return (
         <Link
-            className="group block cursor-pointer text-slate-700"
+            className="group block h-full cursor-pointer"
             to={`/product/${id}`}
         >
-            <article className="section-shell h-full overflow-hidden rounded-[24px] border-white/70 bg-white/90">
-                <div className="relative overflow-hidden bg-slate-50">
+            <article className="relative flex h-full flex-col overflow-hidden transition-all duration-700 hover:-translate-y-1">
+                {/* Image Section - Editorial Style */}
+                <div className="relative overflow-hidden bg-[#f4ebd9]/20" style={{ paddingBottom: '133%' /* 3:4 aspect ratio */ }}>
                     {oldPrice > price && (
-                        <div className="absolute left-3 top-3 z-10 rounded-full bg-rose-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg">
+                        <div className="absolute left-3 top-3 z-10 bg-black/90 px-3 py-1.5 text-[9px] sm:text-[10px] font-bold text-white tracking-[0.15em]">
                             {t.sale}
                         </div>
                     )}
                     <img
-                        className="aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)] group-hover:scale-105"
                         src={imageSrc}
                         alt={name}
                     />
+                    
+                    {/* Ultra-premium slide-up bar overlay */}
+                    <div className="absolute inset-x-0 bottom-0 z-10 translate-y-full bg-white/95 py-3.5 text-center text-[11px] font-bold uppercase tracking-[0.25em] text-[#1a1a1a] shadow-[0_-4px_24px_rgba(0,0,0,0.05)] backdrop-blur transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-y-0">
+                        {t.view}
+                    </div>
+                    {/* Dark gradient for text contrast at bottom if needed */}
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"></div>
                 </div>
 
-                <div className="space-y-3 p-4 sm:p-5">
-                    <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-400">
+                {/* Text Details Section - Minimalist & Sleek */}
+                <div className="flex flex-col pt-4 sm:pt-5 pb-2">
+                    <p className="mb-1.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.25em] text-[#9b8d7a]">
                         {t.collection}
                     </p>
 
-                    <div className="flex items-start justify-between gap-4">
-                        <p className="text-sm font-semibold leading-6 text-slate-800 sm:text-base">
-                            {name}
-                        </p>
+                    <h3 className="mb-2 line-clamp-2 text-xs sm:text-[14px] font-medium leading-[1.6] text-[#2d2620] transition-colors group-hover:text-black">
+                        {name}
+                    </h3>
 
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 transition duration-300 group-hover:bg-slate-900 group-hover:text-white">
-                            {t.view}
-                        </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-baseline gap-2">
-                        <p className="text-sm font-bold text-slate-900 sm:text-base">
+                    <div className="mt-auto flex flex-wrap items-baseline gap-2.5">
+                        <p className="text-[14px] sm:text-[15px] font-bold text-[#1a1f25]">
                             {formatMoney(price, language)}
                         </p>
                         {oldPrice > price && (
-                            <p className="text-xs text-slate-400 line-through">
+                            <p className="text-[11px] font-medium text-[#b0a698] line-through">
                                 {formatMoney(oldPrice, language)}
                             </p>
                         )}

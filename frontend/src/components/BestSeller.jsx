@@ -3,6 +3,11 @@ import { ShopContext } from '../context/ShopContext';
 import Title from './Title';
 import ProductItem from './ProductItem';
 import { useLanguage } from '../context/LanguageContext';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation } from 'swiper/modules';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import 'swiper/css';
+import 'swiper/css/navigation';
 
 const BestSeller = () => {
     const { products } = useContext(ShopContext);
@@ -11,7 +16,7 @@ const BestSeller = () => {
 
     useEffect(() => {
         const bestProduct = products.filter((item) => item.bestseller);
-        setBestSeller(bestProduct.slice(0, 5));
+        setBestSeller(bestProduct.slice(0, 15));
     }, [products]);
 
     const copy = useMemo(
@@ -33,25 +38,50 @@ const BestSeller = () => {
     );
 
     return (
-        <section className='py-10 sm:py-14'>
-            <div className='mb-8 text-center sm:mb-10'>
+        <section className='py-12 sm:py-16'>
+            <div className='mb-10 text-center sm:mb-12'>
                 <Title text1={copy.title1} text2={copy.title2} />
-                <p className='mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base'>
+                <p className='mx-auto mt-4 max-w-2xl text-center text-sm leading-relaxed text-[#8a7f72] sm:text-base'>
                     {copy.description}
                 </p>
             </div>
 
-            <div className='grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 xl:grid-cols-5'>
-                {bestSeller.map((item, index) => (
-                    <ProductItem
-                        key={index}
-                        id={item._id}
-                        name={item.name}
-                        image={item.image}
-                        price={item.price}
-                        oldPrice={item.oldPrice}
-                    />
-                ))}
+            <div className='relative group px-2 sm:px-4'>
+                <Swiper
+                    modules={[Navigation]}
+                    navigation={{
+                        nextEl: '.best-next',
+                        prevEl: '.best-prev',
+                    }}
+                    spaceBetween={16}
+                    slidesPerView={2}
+                    breakpoints={{
+                        640: { slidesPerView: 3, spaceBetween: 20 },
+                        1024: { slidesPerView: 4, spaceBetween: 24 },
+                        1280: { slidesPerView: 5, spaceBetween: 24 }
+                    }}
+                    className="!pb-6"
+                >
+                    {bestSeller.map((item, index) => (
+                        <SwiperSlide key={index} className="h-auto">
+                            <ProductItem
+                                id={item._id}
+                                name={item.name}
+                                image={item.image}
+                                price={item.price}
+                                oldPrice={item.oldPrice}
+                            />
+                        </SwiperSlide>
+                    ))}
+                </Swiper>
+
+                {/* Navigation Buttons */}
+                <button className="best-prev absolute -left-2 sm:-left-6 top-[35%] z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center text-[#1a1a1a] transition-all hover:scale-110 disabled:opacity-0 disabled:cursor-not-allowed">
+                    <ChevronLeft strokeWidth={1} className="h-8 w-8 sm:h-10 sm:w-10 opacity-70 hover:opacity-100" />
+                </button>
+                <button className="best-next absolute -right-2 sm:-right-6 top-[35%] z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center text-[#1a1a1a] transition-all hover:scale-110 disabled:opacity-0 disabled:cursor-not-allowed">
+                    <ChevronRight strokeWidth={1} className="h-8 w-8 sm:h-10 sm:w-10 opacity-70 hover:opacity-100" />
+                </button>
             </div>
         </section>
     );
