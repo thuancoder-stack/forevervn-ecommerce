@@ -5,7 +5,7 @@ import userModel from '../models/userModel.js';
 
 const getDashboardStats = async (req, res) => {
     try {
-        const orders = await orderModel.find({ status: { $ne: 'Cancelled' } });
+        const orders = await orderModel.find({ status: { $nin: ['Cancelled', 'Returned'] } });
         const products = await productModel.find({});
         const productMap = new Map(products.map((product) => [String(product._id), product]));
         

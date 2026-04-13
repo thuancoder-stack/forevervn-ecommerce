@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import {
@@ -27,13 +27,15 @@ import {
   compactStatCardClass,
   compactStatsRowClass,
   getSelectPopupContainer,
+  compactStatsRowClass,
+  getSelectPopupContainer,
   nativeSelectClass,
   pageShellClass,
 } from '../lib/adminAntd'
 
 const { Text } = Typography
 
-const ORDER_STATUSES = ['Order Placed', 'Packing', 'Shipped', 'Out for Delivery', 'Delivered', 'Received', 'Cancelled']
+const ORDER_STATUSES = ['Order Placed', 'Packing', 'Shipped', 'Out for Delivery', 'Delivered', 'Received', 'Return Requested', 'Returning', 'Returned', 'Cancelled']
 const REFRESH_INTERVAL_MS = 10000
 
 const STATUS_COLORS = {
@@ -43,6 +45,9 @@ const STATUS_COLORS = {
   'Out for Delivery': 'orange',
   Delivered: 'success',
   Received: 'success',
+  'Return Requested': 'warning',
+  Returning: 'warning',
+  Returned: 'default',
   Cancelled: 'error',
 }
 
@@ -53,6 +58,9 @@ const STATUS_PIE_COLORS = {
   'Out for Delivery': '#fb923c',
   Delivered: '#22c55e',
   Received: '#14b8a6',
+  'Return Requested': '#facc15',
+  Returning: '#eab308',
+  Returned: '#94a3b8',
   Cancelled: '#f87171',
 }
 

@@ -18,6 +18,7 @@ import SubCategories from './pages/SubCategories'
 import AuditLogs from './pages/AuditLogs'
 import Banners from './pages/Banners'
 import Reviews from './pages/Reviews'
+import Returns from './pages/Returns'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { Routes, Route, Navigate } from 'react-router-dom'
@@ -89,6 +90,7 @@ const App = () => {
             <Route path='/audit-logs' element={<AuditLogs token={token} backendUrl={backendUrl} />} />
             <Route path='/banners' element={<Banners token={token} backendUrl={backendUrl} />} />
             <Route path='/reviews' element={<Reviews token={token} backendUrl={backendUrl} />} />
+            <Route path='/returns' element={<Returns token={token} backendUrl={backendUrl} />} />
             <Route path='*' element={<Navigate to='/dashboard' replace />} />
           </Routes>
         </div>

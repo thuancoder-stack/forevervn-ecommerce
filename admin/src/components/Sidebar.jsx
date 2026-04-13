@@ -20,6 +20,7 @@ const ALL_NAV_ITEMS = [
   { to: '/bulk-operation', icon: <Zap size={18} />, labelKey: 'bulkOperation', roles: ['Admin'], group: 'COMMERCE' },
   { to: '/vouchers', icon: <Ticket size={18} />, labelKey: 'vouchers', roles: ['Admin'], group: 'COMMERCE' },
   { to: '/orders', icon: <Package size={18} />, labelKey: 'orders', roles: ['Admin', 'Employee'], group: 'COMMERCE' },
+  { to: '/returns', icon: <History size={18} />, labelKey: 'returns', roles: ['Admin', 'Employee'], group: 'COMMERCE' },
   { to: '/audit-logs', icon: <History size={18} />, labelKey: 'auditLogs', roles: ['Admin'], group: 'COMMERCE' },
 ]
 

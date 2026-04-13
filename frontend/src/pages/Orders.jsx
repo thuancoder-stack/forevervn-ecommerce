@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { ShopContext } from '../context/ShopContext';
@@ -74,7 +74,17 @@ const copy = {
             Delivered: 'Đã giao',
             Received: 'Đã nhận hàng',
             Cancelled: 'Đã hủy',
+            'Return Requested': 'Yêu cầu trả hàng',
+            Returning: 'Đang trả hàng',
+            Returned: 'Đã hoàn trả',
         },
+        returnOrder: 'Trả hàng/Hoàn tiền',
+        returnReasonPlaceholder: 'Vui lòng ghi rõ lý do trả hàng (hàng lỗi, rách, không đúng mẫu...)...',
+        returnImages: 'Tải ảnh minh chứng (tối đa 4 ảnh)',
+        returnSuccess: 'Đã gửi yêu cầu, vui lòng chờ duyệt',
+        returnFailed: 'Không thể gửi yêu cầu',
+        submitReturn: 'Gửi yêu cầu',
+        cancel: 'Đóng',
     },
     en: {
         title1: 'MY',
@@ -129,7 +139,17 @@ const copy = {
             Delivered: 'Delivered',
             Received: 'Received',
             Cancelled: 'Cancelled',
+            'Return Requested': 'Return Requested',
+            Returning: 'Returning',
+            Returned: 'Returned',
         },
+        returnOrder: 'Return/Refund',
+        returnReasonPlaceholder: 'Please detail the reason (defective, wrong size, torn...)...',
+        returnImages: 'Upload evidence images (max 4)',
+        returnSuccess: 'Return request submitted, pending review',
+        returnFailed: 'Unable to submit request',
+        submitReturn: 'Submit Request',
+        cancel: 'Close',
     },
 };
 
@@ -149,6 +169,12 @@ const Orders = () => {
     const [statusFilter, setStatusFilter] = useState('All');
     const [confirmingId, setConfirmingId] = useState('');
     const [buyingAgainId, setBuyingAgainId] = useState('');
+    
+    // Return Request State
+    const [returnModalOrder, setReturnModalOrder] = useState(null);
+    const [returnReason, setReturnReason] = useState('');
+    const [returnImages, setReturnImages] = useState([]);
+    const [submittingReturn, setSubmittingReturn] = useState(false);
 
     const statusLabel = useCallback(
         (status) => t.statuses[status] || status || t.unknown,
@@ -410,6 +436,38 @@ const Orders = () => {
         }
     };
 
+    const handleReturnSubmit = async (e) => {
+        e.preventDefault();
+        if (!token || !returnModalOrder || !returnReason.trim() || submittingReturn) return;
+
+        try {
+            setSubmittingReturn(true);
+            const formData = new FormData();
+            formData.append('orderId', returnModalOrder._id);
+            formData.append('reason', returnReason.trim());
+
+            for (let i = 0; i < returnImages.length; i++) {
+                formData.append(`image${i + 1}`, returnImages[i]);
+            }
+
+            const response = await axios.post(`${backendUrl}/api/return/request`, formData, { headers: { token } });
+
+            if (response?.data?.success) {
+                toast.success(t.returnSuccess || response.data.message);
+                setReturnModalOrder(null);
+                setReturnReason('');
+                setReturnImages([]);
+                fetchOrderData({ silent: true });
+            } else {
+                toast.error(response?.data?.message || t.returnFailed);
+            }
+        } catch (error) {
+            toast.error(error?.response?.data?.message || t.returnFailed);
+        } finally {
+            setSubmittingReturn(false);
+        }
+    };
+
     const getStatusDotClass = (status) => STATUS_DOT_STYLES[status] || 'bg-gray-400';
 
     const getItemImage = (imageValue) => {
@@ -513,6 +571,7 @@ const Orders = () => {
                             const canCancel = ['Order Placed', 'Packing'].includes(status);
                             const canConfirmReceived = status === 'Delivered';
                             const canBuyAgain = ['Delivered', 'Received'].includes(status);
+                            const canReturn = ['Delivered', 'Received'].includes(status);
 
                             return (
                                 <article key={order._id} className='section-shell overflow-hidden px-5 py-5 sm:px-6 sm:py-6'>
@@ -632,6 +691,16 @@ const Orders = () => {
                                             </button>
                                         ) : null}
 
+                                        {canReturn ? (
+                                            <button
+                                                onClick={() => setReturnModalOrder(order)}
+                                                className='rounded-full border border-orange-200 bg-orange-50 px-5 py-3 text-sm font-semibold text-orange-600 hover:bg-orange-500 hover:text-white'
+                                                type='button'
+                                            >
+                                                {t.returnOrder}
+                                            </button>
+                                        ) : null}
+
                                         {canCancel ? (
                                             <button
                                                 onClick={() => handleCancelOrder(order._id)}
@@ -648,6 +717,79 @@ const Orders = () => {
                     </>
                 )}
             </section>
+
+            {returnModalOrder && (
+                <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm'>
+                    <div className='w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]'>
+                        <div className='flex items-center justify-between mb-4 flex-shrink-0'>
+                            <h3 className='text-lg font-bold text-slate-900'>
+                                {t.returnOrder} - #{String(returnModalOrder._id).slice(-8).toUpperCase()}
+                            </h3>
+                            <button
+                                onClick={() => setReturnModalOrder(null)}
+                                className='rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                            >
+                                <svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className='overflow-y-auto flex-1 space-y-4 pr-2'>
+                            <div>
+                                <textarea
+                                    className='w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none focus:border-slate-400 min-h-[120px]'
+                                    placeholder={t.returnReasonPlaceholder}
+                                    value={returnReason}
+                                    onChange={(e) => setReturnReason(e.target.value)}
+                                ></textarea>
+                            </div>
+                            <div>
+                                <p className='mb-2 text-sm font-semibold text-slate-700'>{t.returnImages}</p>
+                                <input
+                                    type='file'
+                                    multiple
+                                    accept='image/*'
+                                    onChange={(e) => {
+                                        const files = Array.from(e.target.files);
+                                        if (files.length > 4) {
+                                            toast.error('Tối đa 4 ảnh / Max 4 images');
+                                            return;
+                                        }
+                                        setReturnImages(files);
+                                    }}
+                                    className='block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100'
+                                />
+                                {returnImages.length > 0 && (
+                                    <div className='mt-3 flex gap-2 flex-wrap'>
+                                        {returnImages.map((img, i) => (
+                                            <div key={i} className='h-16 w-16 overflow-hidden rounded-xl border border-slate-100'>
+                                                <img src={URL.createObjectURL(img)} className='h-full w-full object-cover' alt='Preview' />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className='mt-6 flex flex-wrap justify-end gap-3 flex-shrink-0 pt-4 border-t border-slate-100'>
+                            <button
+                                onClick={() => setReturnModalOrder(null)}
+                                className='rounded-full px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100'
+                                type='button'
+                            >
+                                {t.cancel}
+                            </button>
+                            <button
+                                onClick={handleReturnSubmit}
+                                disabled={submittingReturn || !returnReason.trim()}
+                                className='rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50'
+                                type='button'
+                            >
+                                {submittingReturn ? '...' : t.submitReturn}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

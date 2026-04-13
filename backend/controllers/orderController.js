@@ -568,7 +568,7 @@ const sepayIpnHandler = async (req, res) => {
 const getAdminPaymentAnalytics = async (req, res) => {
     try {
         const stats = await orderModel.aggregate([
-            { $match: { status: { $ne: 'Cancelled' } } }, 
+            { $match: { status: { $nin: ['Cancelled', 'Returned'] } } }, 
             { 
                 $group: {
                     _id: "$paymentMethod", 
@@ -584,4 +584,4 @@ const getAdminPaymentAnalytics = async (req, res) => {
     }
 };
 
-export { placeOrder, placeOrderSePay, sepayIpnHandler, getAdminPaymentAnalytics, allOrders, userOrders, updateStatus, cancelOrder, confirmReceived, deleteOrder };
+export { placeOrder, placeOrderSePay, sepayIpnHandler, getAdminPaymentAnalytics, allOrders, userOrders, updateStatus, cancelOrder, confirmReceived, deleteOrder, restoreInventoryFromOrder };
