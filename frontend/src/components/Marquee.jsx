@@ -8,17 +8,17 @@ const Marquee = () => {
     const items = useMemo(() => {
         if (language === 'vi') {
             return [
-                "FREESHIP ĐƠN TỪ 500KVNĐ",
-                "MÃ GIẢM GIÁ 5% CHO KHÁCH HÀNG MỚI",
-                "GIAO HÀNG HỎA TỐC 2H NỘI THÀNH",
-                "ĐỔI TRẢ DỄ DÀNG TRONG 7 NGÀY"
+                "FREESHIP TỪ 500K",
+                "GIẢM 5% KHÁCH MỚI",
+                "GIAO HÀNG 2H",
+                "ĐỔI TRẢ 7 NGÀY"
             ];
         }
         return [
-            "FREE SHIPPING ON ORDERS OVER 500K",
-            "5% OFF FOR FIRST TIME CUSTOMERS",
-            "2H EXPRESS DELIVERY IN METRO AREAS",
-            "EASY 7-DAY RETURN POLICY"
+            "FREE SHIP 500K",
+            "5% OFF FIRST ORDER",
+            "2H DELIVERY",
+            "7-DAY RETURNS"
         ];
     }, [language]);
 
@@ -34,7 +34,7 @@ const Marquee = () => {
 
     return (
         <div 
-            className="w-[100vw] relative left-1/2 -translate-x-1/2 bg-[#0b0f19] text-white py-4 shadow-[0_12px_24px_rgba(0,0,0,0.15)] select-none flex overflow-hidden border-y border-white/10" 
+            className="w-full bg-[#0b0f19] text-white py-3.5 mt-10 rounded-2xl shadow-[0_12px_24px_rgba(0,0,0,0.15)] select-none flex overflow-hidden border border-white/10" 
             dir="ltr"
         >
             <div className="marquee-content flex items-center shrink-0">

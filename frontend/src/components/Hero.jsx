@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, BadgeCheck, Sparkles, WandSparkles } from 'lucide-react';
 import { assets } from '../assets/assets';
 import { useLanguage } from '../context/LanguageContext';
+import Marquee from './Marquee';
 
 const Hero = () => {
   const { language } = useLanguage();
@@ -11,42 +12,42 @@ const Hero = () => {
     if (language === 'vi') {
       return {
         badge: 'ForeverVN mùa mới',
-        title: 'Một homepage thời trang giàu cảm xúc hơn, kể chuyện rõ hơn và khiến người xem muốn khám phá nhiều hơn.',
+        title: 'Không gian thời trang cao cấp, giàu cảm xúc và truyền cảm hứng.',
         description:
-          'Trang chủ nên mang cảm giác của một cửa hàng thời trang cao cấp, không chỉ là vài block ngắn. ForeverVN giờ mở đầu với câu chuyện rõ hơn, nhịp visual tốt hơn và trải nghiệm cuộn trang dài hơn để sản phẩm, danh mục và độ tin cậy đều có không gian thở.',
+          'Khám phá câu chuyện đằng sau mỗi thiết kế với nhịp điệu thị giác tinh tế. ForeverVN mở ra trải nghiệm cuộn mượt mà, nơi mỗi sản phẩm và danh mục đều có không gian riêng để tỏa sáng.',
         quickNotes: [
-          'Homepage kể chuyện rõ hơn và giàu cảm xúc hơn',
+          'Trang chủ kể chuyện trực quan, cuốn hút',
           'Mặc thử ảo cho các sản phẩm áo quần',
-          'Chi tiết sản phẩm và checkout mượt hơn',
+          'Chi tiết sản phẩm và checkout mượt mà',
         ],
         shopNow: 'Mua ngay',
         ourStory: 'Câu chuyện thương hiệu',
         support1: 'Đổi hàng trong 7 ngày',
         support2: 'Tuyển chọn theo mùa',
-        support3: 'Trải nghiệm mua sắm hiện đại',
-        cardTitle: 'Nhịp homepage mới',
-        cardText: 'Kể chuyện dài hơn, điểm nhấn rõ hơn và ấn tượng đầu tiên cao cấp hơn.',
+        support3: 'Trải nghiệm hiện đại',
+        cardTitle: 'Ngôn ngữ thiết kế mới',
+        cardText: 'Giao diện trực quan, tạo ấn tượng mạnh mẽ ngay từ ánh nhìn đầu tiên.',
         imageAlt: 'Bộ sưu tập mới',
       };
     }
 
     return {
       badge: 'ForeverVN new season',
-      title: 'A richer fashion homepage with more story, more mood and more reasons to explore.',
+      title: 'A premium fashion space, emotional and inspiring.',
       description:
-        'The homepage should feel like a premium storefront, not just a short stack of blocks. ForeverVN now opens with a stronger narrative, a more editorial flow and a longer scroll that helps products, categories and trust signals all breathe properly.',
+        'Discover the story behind every design with a seamless scrolling experience. ForeverVN brings a refined visual rhythm where each product and category has room to shine.',
       quickNotes: [
-        'Premium fashion layout with richer storytelling',
+        'Engaging and visual storytelling layout',
         'Virtual try-on available on apparel pieces',
-        'Fast checkout flow with cleaner product detail moments',
+        'Fast checkout flow with cleaner details',
       ],
       shopNow: 'Shop now',
       ourStory: 'Our story',
       support1: '7 day exchange support',
       support2: 'Curated seasonal edits',
       support3: 'Modern product experience',
-      cardTitle: 'New homepage flow',
-      cardText: 'Longer storytelling, stronger highlights and a more luxurious first impression.',
+      cardTitle: 'New design language',
+      cardText: 'Intuitive interface, making a strong and luxurious first impression.',
       imageAlt: 'Latest arrivals',
     };
   }, [language]);
@@ -135,6 +136,10 @@ const Hero = () => {
             </p>
           </div>
         </div>
+      </div>
+      
+      <div className='relative z-10 w-full pt-4'>
+        <Marquee />
       </div>
     </section>
   );

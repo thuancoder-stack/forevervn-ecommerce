@@ -12,7 +12,6 @@ import BestSeller from "../components/BestSeller";
 import OurPolicy from "../components/OurPolicy";
 import NewsletterBox from "../components/NewsletterBox";
 import ProductItem from "../components/ProductItem";
-import Marquee from "../components/Marquee";
 
 const Home = () => {
   const { products } = useContext(ShopContext);
@@ -133,7 +132,6 @@ const Home = () => {
 
   return (
     <div className="space-y-10 sm:space-y-14">
-      <Marquee />
       <Hero />
       <BannerSlider />
       <BestSeller />
