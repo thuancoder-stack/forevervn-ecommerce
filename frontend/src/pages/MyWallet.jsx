@@ -119,47 +119,87 @@ const MyWallet = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Panel Số dư */}
-                <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden flex flex-col justify-between h-[250px]">
-                    <div className="absolute top-0 right-0 p-6 opacity-20">
-                        <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                    </div>
-                    
-                    <div>
-                        <p className="text-slate-400 font-medium text-sm mb-1 uppercase tracking-wider">{t.balance}</p>
-                        <h2 className="text-4xl font-black tracking-tight" style={{fontFamily: 'Outfit'}}>
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(balance)}
-                        </h2>
+                <div 
+                    className="rounded-3xl shadow-2xl relative overflow-hidden flex flex-col justify-between h-[280px]"
+                    style={{
+                        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+                        border: '1px solid rgba(255,255,255,0.1)'
+                    }}
+                >
+                    {/* SVG Mạch điện nền (Background Pattern) */}
+                    <div className="absolute inset-0 opacity-20 pointer-events-none">
+                        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <pattern id="circuit" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                                    <path d="M10 10 L30 10 L30 30 M70 10 L50 10 L50 40 L30 40 M90 50 L70 50 L70 80 L90 80 M10 90 L30 90 L30 70 L10 70" stroke="#fff" strokeWidth="1" fill="none" />
+                                    <circle cx="10" cy="10" r="2" fill="#fff" />
+                                    <circle cx="30" cy="30" r="2" fill="#fff" />
+                                    <circle cx="70" cy="10" r="2" fill="#fff" />
+                                    <circle cx="30" cy="40" r="2" fill="#fff" />
+                                    <circle cx="90" cy="50" r="2" fill="#fff" />
+                                    <circle cx="90" cy="80" r="2" fill="#fff" />
+                                    <circle cx="10" cy="90" r="2" fill="#fff" />
+                                </pattern>
+                                <radialGradient id="glow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                                    <stop offset="0%" stopColor="rgba(255,255,255,0.15)" />
+                                    <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                                </radialGradient>
+                            </defs>
+                            <rect width="100%" height="100%" fill="url(#circuit)" />
+                            <circle cx="75%" cy="40%" r="150" fill="url(#glow)" />
+                        </svg>
                     </div>
 
-                    <div className="relative z-10 flex flex-col gap-3">
-                        <div className="flex gap-2 mb-1">
+                    {/* Chip Icon */}
+                    <div className="absolute right-8 top-16 w-16 h-12 rounded-lg border border-slate-600 shadow-inner flex flex-col justify-evenly opacity-80" style={{ background: 'linear-gradient(to right, #cbd5e1, #94a3b8, #cbd5e1)'}}>
+                        <div className="w-full h-[1px] bg-slate-600"></div>
+                        <div className="w-full h-[1px] bg-slate-600"></div>
+                        <div className="w-full h-[1px] bg-slate-600 mb-0"></div>
+                    </div>
+                    
+                    {/* Phần nội dung trên (Số dư) */}
+                    <div className="p-8 relative z-10 flex-1">
+                        <p className="font-semibold text-xs mb-1 uppercase tracking-wider" style={{ color: '#d4af37' }}>{t.balance}</p>
+                        <h2 className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif', color: '#facc15', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(balance)}
+                        </h2>
+                        
+                        <div className="flex gap-2 mt-4 absolute" style={{ bottom: '20px' }}>
                             {[50000, 100000, 200000, 500000].map(amt => (
                                 <button
                                     key={amt}
                                     onClick={() => setTopupAmount(String(amt))}
-                                    className="bg-slate-800/60 hover:bg-slate-700 text-slate-300 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-sm transition-colors border border-slate-700/50"
+                                    className="bg-white/10 hover:bg-white/20 text-white rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-md transition-colors border border-white/20 shadow-sm"
                                 >
                                     +{new Intl.NumberFormat('vi-VN').format(amt)}đ
                                 </button>
                             ))}
                         </div>
-                        <div className="flex gap-3 w-full">
-                            <input
-                                type="number"
-                                min="10000"
-                                placeholder={t.topupAmount}
-                                value={topupAmount}
-                                onChange={(e) => setTopupAmount(e.target.value)}
-                                className="bg-slate-800 text-white border border-slate-700 rounded-full px-5 py-3 outline-none text-sm font-medium flex-1 h-[48px]"
-                            />
-                            <button
-                                onClick={handleTopUp}
-                                disabled={submitting}
-                                className="bg-white text-slate-900 rounded-full px-6 py-3 text-sm font-bold shadow-[0_4px_14px_0_rgba(255,255,255,0.39)] hover:bg-slate-100 hover:shadow-[0_6px_20px_rgba(255,255,255,0.23)] transition-all disabled:opacity-50 h-[48px] whitespace-nowrap"
-                            >
-                                {submitting ? t.processing : t.topup}
-                            </button>
-                        </div>
+                    </div>
+
+                    {/* Phần viền kim loại (Metallic Footer) */}
+                    <div 
+                        className="relative z-10 px-6 py-4 flex gap-3 items-center backdrop-blur-md"
+                        style={{
+                            background: 'linear-gradient(to bottom, #f8fafc, #cbd5e1, #94a3b8)',
+                            borderTop: '2px solid rgba(255,255,255,0.5)'
+                        }}
+                    >
+                        <input
+                            type="number"
+                            min="10000"
+                            placeholder={t.topupAmount}
+                            value={topupAmount}
+                            onChange={(e) => setTopupAmount(e.target.value)}
+                            className="bg-slate-900/10 text-slate-900 placeholder:text-slate-600 border border-slate-900/20 rounded-full px-5 py-3 outline-none text-sm font-semibold flex-1 h-[44px] shadow-inner focus:border-slate-400 focus:bg-white/50 transition-colors"
+                        />
+                        <button
+                            onClick={handleTopUp}
+                            disabled={submitting}
+                            className="bg-white text-slate-900 rounded-full px-6 py-3 text-sm font-bold shadow-md hover:bg-slate-50 transition-all disabled:opacity-50 h-[44px] whitespace-nowrap"
+                        >
+                            {submitting ? t.processing : t.topup}
+                        </button>
                     </div>
                 </div>
 
