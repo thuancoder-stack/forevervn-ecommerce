@@ -25,8 +25,7 @@ const Home = () => {
           {
             title: "Ra mắt mới mỗi tuần",
             value: "Gợi ý mới",
-            description:
-              "Sản phẩm mới được đưa lên theo nhịp chọn lọc rõ ràng hơn, thay vì cảm giác tràn ngập như một catalog quá dày.",
+            description: "Tuyển chọn kỹ lưỡng, mang đến các phong cách mới nhất mỗi tuần.",
             icon: Sparkles,
             tone: "bg-[#fef2f2]",
             iconTone: "bg-white text-rose-500",
@@ -34,8 +33,7 @@ const Home = () => {
           {
             title: "Giao hàng nhanh",
             value: "Toàn quốc",
-            description:
-              "Vận chuyển, đổi hàng và checkout đều được trình bày rõ để khách đi từ xem đến đặt hàng nhanh hơn.",
+            description: "Trải nghiệm mua sắm mượt mà từ chọn đồ, chốt đơn đến giao hàng tốc độ cao.",
             icon: Truck,
             tone: "bg-[#eff6ff]",
             iconTone: "bg-white text-sky-500",
@@ -43,35 +41,28 @@ const Home = () => {
           {
             title: "Tương tác cao cấp",
             value: "UX hiện đại",
-            description:
-              "Từ mặc thử áo quần đến add-to-cart nhanh, trải nghiệm mua sắm sống động và hiện đại hơn.",
+            description: "Thử quần áo ảo và tương tác thiết kế trực quan, sống động.",
             icon: WandSparkles,
             tone: "bg-[#fff7ed]",
             iconTone: "bg-white text-amber-500",
           },
         ],
         brandStory: 'Câu chuyện thương hiệu',
-        brandTitle: 'Một homepage nên bán được cảm giác, không chỉ là lưới sản phẩm.',
-        brandText1:
-          'ForeverVN nên mang cảm giác của một điểm đến thời trang ngay từ lần chạm đầu tiên. Thay vì kết thúc nhanh sau vài block sản phẩm, trang chủ giờ kéo dài hơn, có nhịp hơn và thuyết phục hơn.',
-        brandText2:
-          'Mục tiêu rất rõ: dẫn mắt người dùng qua các điểm nhấn, các lựa chọn tuyển chọn và các tín hiệu tin cậy để trang trở nên giàu cảm xúc hơn mà không bị ồn.',
+        brandTitle: 'Cảm hứng thời trang dệt nên từ những câu chuyện.',
+        brandText1: 'ForeverVN mang đến không gian mua sắm tinh tế. Nơi mỗi thiết kế không chỉ là trang phục, mà còn là cá tính và phong cách nghệ thuật độc bản.',
+        brandText2: '',
         exploreCollection: 'Khám phá bộ sưu tập',
         meetBrand: 'Về ForeverVN',
         editorialTag: 'Điểm nhấn biên tập',
-        editorialTitle: 'Giữ nhịp cuộn trang sống động hơn bằng các block kể chuyện và điểm dừng thị giác rõ hơn.',
-        editorialText:
-          'Trang chủ không nên dừng lại ngay sau những cụm mua sắm đầu tiên. Các section sâu hơn giúp giải thích thương hiệu, tạo cảm hứng và giữ người xem ở lại lâu hơn trước khi chọn sản phẩm.',
+        editorialTitle: 'Điểm chạm thị giác, khơi nguồn sáng tạo.',
+        editorialText: 'Các bộ sưu tập được sắp đặt như một buổi triển lãm nghệ thuật, giúp bạn tận hưởng thời trang thay vì chỉ mua sắm.',
         lookFeel: 'Cảm giác thương hiệu',
-        lookFeelTitle: 'Nhiều không khí hơn, nhiều tự tin hơn, nhiều lý do để ở lại hơn.',
-        lookFeelText:
-          'Kể chuyện homepage tốt hơn sẽ giúp thương hiệu trở nên có chủ đích hơn. Khách hàng không chỉ nhìn thấy sản phẩm, họ còn cảm được tinh thần đứng sau bộ sưu tập.',
-        clearerJourney: 'Hành trình rõ hơn',
-        clearerJourneyText:
-          'Mỗi section giờ đều có nhiệm vụ riêng: truyền cảm hứng, dẫn hướng và chuyển đổi thay vì chỉ xếp chồng module.',
-        firstImpression: 'Ấn tượng đầu tốt hơn',
-        firstImpressionText:
-          'Trang trở nên hoàn chỉnh hơn, có dấu ấn thương hiệu rõ hơn và tạo cảm giác cao cấp hơn ngay từ những nhịp cuộn đầu tiên.',
+        lookFeelTitle: 'Sống động & Tự tin hơn.',
+        lookFeelText: 'Khách hàng không chỉ khoác lên mình trang phục, họ đang thể hiện tư duy thẩm mỹ và sự tự tin riêng.',
+        clearerJourney: 'Hành trình rõ nét',
+        clearerJourneyText: 'Truyền cảm hứng và mua sắm dễ dàng, mượt mà ở mọi điểm chạm.',
+        firstImpression: 'Dấu ấn đặc quyền',
+        firstImpressionText: 'Định hình phong cách đẳng cấp, mang đến sự trọn vẹn ngay từ ánh nhìn đầu tiên.',
       };
     }
 
@@ -80,8 +71,7 @@ const Home = () => {
         {
           title: "Curated weekly drops",
           value: "Fresh edits",
-          description:
-            "New arrivals land in a cleaner, more intentional mix instead of feeling like an endless catalog dump.",
+          description: "Carefully curated selections bringing you the latest trends every week.",
           icon: Sparkles,
           tone: "bg-[#fef2f2]",
           iconTone: "bg-white text-rose-500",
@@ -89,8 +79,7 @@ const Home = () => {
         {
           title: "Fast fulfillment",
           value: "Nationwide",
-          description:
-            "Delivery, exchange support and checkout flow stay clear so customers can move from browse to order faster.",
+          description: "Seamless shopping from browsing straight to lightning-fast delivery.",
           icon: Truck,
           tone: "bg-[#eff6ff]",
           iconTone: "bg-white text-sky-500",
@@ -98,35 +87,28 @@ const Home = () => {
         {
           title: "Premium interaction",
           value: "Modern UX",
-          description:
-            "From try-on apparel to quick add-to-cart moments, the shopping experience feels more alive.",
+          description: "Cutting-edge Virtual Try-on and authentic 3D interactions.",
           icon: WandSparkles,
           tone: "bg-[#fff7ed]",
           iconTone: "bg-white text-amber-500",
         },
       ],
       brandStory: 'Brand Story',
-      brandTitle: 'A homepage that sells the feeling, not only the product grid.',
-      brandText1:
-        'ForeverVN should feel like a fashion destination the moment people land on it. Instead of ending after a short banner and a few rows of cards, the homepage now carries more narrative, more visual rhythm and more reasons to keep exploring.',
-      brandText2:
-        'The goal is simple: guide the eye through premium highlights, curated edits and trust signals so the page feels richer, longer and more memorable without becoming noisy.',
+      brandTitle: 'Fashion inspiration woven from stories.',
+      brandText1: 'ForeverVN offers a sophisticated shopping space. Here, each design is not just clothing, but unique artistic expression.',
+      brandText2: '',
       exploreCollection: 'Explore Collection',
       meetBrand: 'Meet ForeverVN',
       editorialTag: 'Editorial Spotlight',
-      editorialTitle: 'Keep the scroll alive with richer story blocks and stronger visual stops.',
-      editorialText:
-        'The homepage should not end right after the first shopping modules. Deeper sections help explain the brand, create aspiration and make visitors stay longer before they choose a product.',
+      editorialTitle: 'Visual touchpoints to spark creativity.',
+      editorialText: 'Our collections are curated like an art exhibition, helping you enjoy fashion rather than just shopping.',
       lookFeel: 'Look and Feel',
-      lookFeelTitle: 'More atmosphere, more confidence, more reason to stay.',
-      lookFeelText:
-        'Richer homepage storytelling helps the brand feel intentional. Customers do not only see products, they understand the mood and direction behind the collection.',
-      clearerJourney: 'Clearer journey',
-      clearerJourneyText:
-        'Each section now has a purpose: inspire, guide and convert instead of simply stacking modules.',
-      firstImpression: 'Better first impression',
-      firstImpressionText:
-        'The page feels more complete, more branded and more premium from the very first scroll.',
+      lookFeelTitle: 'Vibrant & Confident.',
+      lookFeelText: "Customers don't just wear clothes; they express their aesthetic mindset and unique confidence.",
+      clearerJourney: 'Effortless journey',
+      clearerJourneyText: 'Inspiring and effortless shopping without boundries.',
+      firstImpression: 'Premium signature',
+      firstImpressionText: 'Delivering perfection and styling confidence from the very first glance.',
     };
   }, [language]);
 
@@ -155,9 +137,11 @@ const Home = () => {
               {copy.brandText1}
             </p>
 
-            <p className="mt-4 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
-              {copy.brandText2}
-            </p>
+            {copy.brandText2 && (
+              <p className="mt-4 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
+                {copy.brandText2}
+              </p>
+            )}
 
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
