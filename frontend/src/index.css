@@ -169,3 +169,22 @@ textarea::placeholder {
     width: min(100% - 3rem, 1440px);
   }
 }
+
+.marquee-content {
+  animation: scroll-marquee 25s linear infinite;
+}
+
+.marquee-content:hover {
+  animation-play-state: paused;
+}
+
+.marquee-item {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+@keyframes scroll-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
