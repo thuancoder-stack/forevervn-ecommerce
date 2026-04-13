@@ -1,7 +1,13 @@
 import userModel from '../models/userModel.js';
 import walletTransactionModel from '../models/walletTransactionModel.js';
-import { getSepayClient } from '../config/sepay.js';
+import { SePayPgClient } from 'sepay-pg-node';
 import mongoose from 'mongoose';
+
+const getSepayClient = () => new SePayPgClient({
+    env: 'production',
+    merchant_id: 'SP-LIVE-TN79A866', 
+    secret_key: process.env.SEPAY_SECRET_KEY,
+});
 
 // Lấy thông tin ví và lịch sử dòng tiền
 const getWalletBalanceAndHistory = async (req, res) => {
