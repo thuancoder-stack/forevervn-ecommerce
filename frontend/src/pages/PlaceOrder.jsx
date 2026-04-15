@@ -517,11 +517,11 @@ const PlaceOrder = () => {
             const response = await axios.post(endpoint, payload, { headers: { token } });
 
             if (response?.data?.success) {
-                if (!isBuyNowMode) {
-                    clearLocalCart();
-                }
-                
                 if (method === 'banking' && response.data.checkoutUrl && response.data.checkoutFields) {
+                    if (!isBuyNowMode) {
+                        clearLocalCart();
+                    }
+
                     const { checkoutUrl, checkoutFields } = response.data;
                     const form = document.createElement('form');
                     form.method = 'POST';
@@ -538,6 +538,10 @@ const PlaceOrder = () => {
                     document.body.appendChild(form);
                     form.submit();
                     return; // Wait for redirect
+                }
+
+                if (!isBuyNowMode) {
+                    clearLocalCart();
                 }
 
                 toast.success(t.orderSuccess);

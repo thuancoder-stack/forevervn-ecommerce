@@ -2,16 +2,21 @@ import orderModel from '../models/orderModel.js';
 import productModel from '../models/productModel.js';
 import importBatchModel from '../models/importBatchModel.js';
 import userModel from '../models/userModel.js';
+import { expirePendingSePayOrders } from './orderController.js';
+import { buildVisibleOrderQuery } from '../utils/orderVisibility.js';
 
 const getDashboardStats = async (req, res) => {
     try {
-        const orders = await orderModel.find({ status: { $nin: ['Cancelled', 'Returned'] } });
+        await expirePendingSePayOrders();
+        const orders = await orderModel.find(buildVisibleOrderQuery({ status: { $nin: ['Cancelled', 'Returned'] } }));
         const products = await productModel.find({});
         const productMap = new Map(products.map((product) => [String(product._id), product]));
         
         // New Requirements
         const customersCount = await userModel.countDocuments({ role: 'Customer' });
-        const pendingOrdersCount = await orderModel.countDocuments({ status: { $in: ['Order Placed', 'Packing'] } });
+        const pendingOrdersCount = await orderModel.countDocuments(
+            buildVisibleOrderQuery({ status: { $in: ['Order Placed', 'Packing'] } }),
+        );
         
         // Calculate Total Active Inventory Value (Capital Locked in Stock)
         const activeBatches = await importBatchModel.find({ status: 'Active' });
@@ -135,7 +140,8 @@ const getDashboardStats = async (req, res) => {
 
 const exportOrdersCsv = async (req, res) => {
     try {
-        const orders = await orderModel.find({}).sort({ date: -1 });
+        await expirePendingSePayOrders();
+        const orders = await orderModel.find(buildVisibleOrderQuery()).sort({ date: -1 });
         
         // Define CSV Header
         let csvContent = "Order ID,Date,User ID,Status,Payment Method,Items Count,Total Amount,COGS,Profit\n";

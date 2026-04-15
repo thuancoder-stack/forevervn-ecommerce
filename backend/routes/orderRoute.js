@@ -4,6 +4,7 @@ import adminAuth from '../middleware/adminAuth.js';
 import {
     placeOrder,
     placeOrderSePay,
+    retryPendingSePayOrder,
     placeOrderWallet,
     sepayIpnHandler,
     getAdminPaymentAnalytics,
@@ -28,6 +29,7 @@ orderRouter.post('/status', adminAuth, updateStatus);
 orderRouter.post('/delete', adminAuth, deleteOrder);
 orderRouter.post('/userorders', authUser, userOrders);
 orderRouter.post('/cancel', authUser, cancelOrder);
+orderRouter.post('/retry-sepay', authUser, retryPendingSePayOrder);
 orderRouter.post('/confirm-received', authUser, confirmReceived);
 
 export default orderRouter;

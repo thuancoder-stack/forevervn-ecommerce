@@ -21,6 +21,7 @@ import behaviorRouter from './routes/behaviorRouter.js';
 import returnRouter from './routes/returnRoute.js';
 import walletRouter from './routes/walletRoute.js';
 import startStockAlertJob from './utils/stockAlert.js';
+import startSePayExpiryJob from './utils/sepayExpiryJob.js';
 import aiRouter from './routes/aiRouter.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +34,7 @@ const port = process.env.PORT || 4000;
 connectDB();
 connectCloudinary();
 startStockAlertJob();
+startSePayExpiryJob();
 
 app.use(cors());
 app.use(express.json());

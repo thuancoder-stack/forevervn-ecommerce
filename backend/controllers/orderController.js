@@ -5,6 +5,7 @@ import walletTransactionModel from '../models/walletTransactionModel.js';
 import importBatchModel from '../models/importBatchModel.js';
 import logAction from '../utils/logger.js';
 import { buildInventoryFilter, getAvailableStock, normalizeVariantColor } from '../utils/inventory.js';
+import { buildVisibleOrderQuery } from '../utils/orderVisibility.js';
 import { SePayPgClient } from 'sepay-pg-node';
 
 const getSepayClient = () => new SePayPgClient({
@@ -13,9 +14,74 @@ const getSepayClient = () => new SePayPgClient({
     secret_key: process.env.SEPAY_SECRET_KEY,
 });
 
-
-
 const DEDUCTION_TRIGGER_STATUSES = new Set(['Packing', 'Shipped', 'Out for Delivery', 'Delivered', 'Received']);
+const PENDING_SEPAY_STATUSES = new Set(['Pending Payment']);
+const DEFAULT_SEPAY_PENDING_TIMEOUT_SECONDS = 5 * 60;
+
+const getSepayPendingTimeoutMs = () => {
+    const configuredSeconds = Number(process.env.SEPAY_PENDING_TIMEOUT_SECONDS);
+
+    if (Number.isFinite(configuredSeconds) && configuredSeconds > 0) {
+        return Math.floor(configuredSeconds * 1000);
+    }
+
+    return DEFAULT_SEPAY_PENDING_TIMEOUT_SECONDS * 1000;
+};
+
+const buildSePayReturnUrls = (origin, invoiceId) => ({
+    success_url: `${origin}/orders?sepay_status=success&invoice=${invoiceId}`,
+    error_url: `${origin}/orders?sepay_status=error&invoice=${invoiceId}`,
+    cancel_url: `${origin}/orders?sepay_status=cancelled&invoice=${invoiceId}`,
+});
+
+const buildSePayCheckoutSession = (order, origin) => {
+    const invoiceId = order._id.toString();
+    const checkoutFields = getSepayClient().checkout.initOneTimePaymentFields({
+        payment_method: 'BANK_TRANSFER',
+        order_invoice_number: invoiceId,
+        order_amount: Number(order.amount),
+        currency: 'VND',
+        order_description: 'Thanh toan don hang',
+        ...buildSePayReturnUrls(origin, invoiceId),
+    });
+
+    return {
+        checkoutUrl: getSepayClient().checkout.initCheckoutUrl(),
+        checkoutFields,
+    };
+};
+
+const expirePendingSePayOrders = async () => {
+    const now = Date.now();
+    const expiredOrders = await orderModel.find({
+        paymentMethod: 'Banking',
+        payment: false,
+        status: 'Pending Payment',
+        paymentExpiresAt: { $ne: null, $lte: now },
+    });
+
+    for (const order of expiredOrders) {
+        try {
+            await getSepayClient().order.cancel(order._id.toString());
+        } catch (error) {
+            console.error(`Unable to cancel SePay invoice ${order._id}:`, error?.message || error);
+        }
+
+        order.status = 'Cancelled';
+        order.paymentExpiresAt = null;
+        await order.save();
+
+        if (order.userId) {
+            await logAction(
+                order.userId,
+                'System',
+                'AUTO_CANCEL_PENDING_SEPAY_ORDER',
+                `SePay payment window expired for order #${String(order._id).slice(-8)}`,
+                order._id,
+            );
+        }
+    }
+};
 
 const buildVariantKey = ({ productId, size, color }) =>
     `${String(productId)}__${String(size || 'Free')}__${normalizeVariantColor(color)}`;
@@ -364,7 +430,8 @@ const placeOrderWallet = async (req, res) => {
 
 const allOrders = async (req, res) => {
     try {
-        const orders = await orderModel.find({}).sort({ date: -1 });
+        await expirePendingSePayOrders();
+        const orders = await orderModel.find(buildVisibleOrderQuery()).sort({ date: -1 });
         res.json({ success: true, orders });
     } catch (error) {
         console.log(error);
@@ -380,7 +447,11 @@ const userOrders = async (req, res) => {
             return res.json({ success: false, message: 'Missing user id' });
         }
 
-        const orders = await orderModel.find({ userId }).sort({ date: -1 });
+        await expirePendingSePayOrders();
+
+        const orders = await orderModel
+            .find(buildVisibleOrderQuery({ userId }, { includePendingBanking: true }))
+            .sort({ date: -1 });
         res.json({ success: true, orders });
     } catch (error) {
         console.log(error);
@@ -506,6 +577,57 @@ const cancelOrder = async (req, res) => {
     }
 };
 
+const retryPendingSePayOrder = async (req, res) => {
+    try {
+        const { userId, orderId } = req.body;
+
+        if (!userId || !orderId) {
+            return res.json({ success: false, message: 'Missing user id or order id' });
+        }
+
+        await expirePendingSePayOrders();
+
+        const order = await orderModel.findById(orderId);
+
+        if (!order) {
+            return res.json({ success: false, message: 'Order not found' });
+        }
+
+        if (String(order.userId) !== String(userId)) {
+            return res.json({ success: false, message: 'Not authorized' });
+        }
+
+        if (order.paymentMethod !== 'Banking') {
+            return res.json({ success: false, message: 'Order is not a SePay transfer' });
+        }
+
+        if (order.payment) {
+            return res.json({ success: false, message: 'Payment already confirmed' });
+        }
+
+        if (!PENDING_SEPAY_STATUSES.has(String(order.status || ''))) {
+            return res.json({ success: false, message: `Cannot retry payment in ${order.status} status` });
+        }
+
+        order.paymentExpiresAt = Date.now() + getSepayPendingTimeoutMs();
+        await order.save();
+
+        const origin = req.headers.origin || 'https://forevervn-ecommerce.vercel.app';
+        const { checkoutUrl, checkoutFields } = buildSePayCheckoutSession(order, origin);
+
+        res.json({
+            success: true,
+            checkoutUrl,
+            checkoutFields,
+            orderId: order._id,
+            paymentExpiresAt: order.paymentExpiresAt,
+        });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
 const confirmReceived = async (req, res) => {
     try {
         const { userId, orderId } = req.body;
@@ -627,9 +749,10 @@ const placeOrderSePay = async (req, res) => {
             inventoryDeductedAt: null,
             inventoryAdjustments: [],
             address,
-            status: 'Order Placed',
+            status: 'Pending Payment',
             paymentMethod: 'Banking',
             payment: false,
+            paymentExpiresAt: Date.now() + getSepayPendingTimeoutMs(),
             date: Date.now()
         };
 
@@ -639,24 +762,14 @@ const placeOrderSePay = async (req, res) => {
         await userModel.findByIdAndUpdate(userId, { cartData: {} });
 
         const origin = req.headers.origin || 'https://forevervn-ecommerce.vercel.app';
-        const invoiceId = newOrder._id.toString();
-        const checkoutFields = getSepayClient().checkout.initOneTimePaymentFields({
-            payment_method: 'BANK_TRANSFER',
-            order_invoice_number: invoiceId, 
-            order_amount: Number(amount), 
-            currency: 'VND',
-            order_description: 'Thanh toan don hang',
-            success_url: `${origin}/orders`,
-            error_url:   `${origin}/cart`,
-            cancel_url:  `${origin}/cart`,
-        });
-
-        const checkoutURL = getSepayClient().checkout.initCheckoutUrl();
+        const { checkoutUrl, checkoutFields } = buildSePayCheckoutSession(newOrder, origin);
 
         res.json({
             success: true,
-            checkoutUrl: checkoutURL,
-            checkoutFields: checkoutFields
+            checkoutUrl,
+            checkoutFields,
+            orderId: newOrder._id,
+            paymentExpiresAt: newOrder.paymentExpiresAt,
         });
     } catch (error) {
         console.log(error);
@@ -711,7 +824,15 @@ const sepayIpnHandler = async (req, res) => {
                     const order = await orderModel.findById(invoiceOrderId);
                     if (order && !order.payment) {
                         order.payment = true;
+                        order.paymentExpiresAt = null;
+                        if (order.paymentMethod === 'Banking') {
+                            order.status = 'Order Placed';
+                        }
                         await order.save();
+
+                        if (order.userId) {
+                            await userModel.findByIdAndUpdate(order.userId, { cartData: {} });
+                        }
                         
                         if (order.userId) { 
                             await logAction(order.userId, 'SePay Webhook', 'PAYMENT_SUCCESS', `SePay confirmed payment for order #${String(invoiceOrderId).slice(-8)}`, invoiceOrderId);
@@ -729,8 +850,9 @@ const sepayIpnHandler = async (req, res) => {
 
 const getAdminPaymentAnalytics = async (req, res) => {
     try {
+        await expirePendingSePayOrders();
         const stats = await orderModel.aggregate([
-            { $match: { status: { $nin: ['Cancelled', 'Returned'] } } }, 
+            { $match: buildVisibleOrderQuery({ status: { $nin: ['Cancelled', 'Returned'] } }) },
             { 
                 $group: {
                     _id: "$paymentMethod", 
@@ -746,4 +868,4 @@ const getAdminPaymentAnalytics = async (req, res) => {
     }
 };
 
-export { placeOrder, placeOrderSePay, sepayIpnHandler, getAdminPaymentAnalytics, restoreInventoryFromOrder, placeOrderWallet, allOrders, userOrders, updateStatus, cancelOrder, confirmReceived, deleteOrder };
+export { placeOrder, placeOrderSePay, retryPendingSePayOrder, sepayIpnHandler, getAdminPaymentAnalytics, restoreInventoryFromOrder, placeOrderWallet, allOrders, userOrders, updateStatus, cancelOrder, confirmReceived, deleteOrder, expirePendingSePayOrders };

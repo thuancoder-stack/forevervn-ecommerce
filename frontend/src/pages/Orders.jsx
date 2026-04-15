@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { ShopContext } from '../context/ShopContext';
@@ -9,6 +10,7 @@ import { formatMoney } from '../lib/locale';
 const ORDER_REFRESH_INTERVAL_MS = 10000;
 
 const STATUS_DOT_STYLES = {
+    'Pending Payment': 'bg-amber-400',
     'Order Placed': 'bg-sky-500',
     Packing: 'bg-amber-500',
     Shipped: 'bg-violet-500',
@@ -18,7 +20,7 @@ const STATUS_DOT_STYLES = {
     Cancelled: 'bg-rose-500',
 };
 
-const FILTER_STATUSES = ['All', 'Order Placed', 'Packing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled'];
+const FILTER_STATUSES = ['All', 'Pending Payment', 'Order Placed', 'Packing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
 const copy = {
     vi: {
@@ -193,6 +195,22 @@ const Orders = () => {
     const { backendUrl, token, logout, navigate, products, cartItems, updateCartQty, getProductStock } = useContext(ShopContext);
     const { language } = useLanguage();
     const t = copy[language];
+    const location = useLocation();
+    const pendingPaymentLabel = language === 'vi' ? 'Chờ thanh toán' : 'Pending Payment';
+    const retryPaymentLabel = language === 'vi' ? 'Thanh toán lại' : 'Pay Again';
+    const retryPaymentFailedLabel = language === 'vi' ? 'Không thể tạo lại phiên thanh toán' : 'Unable to recreate the payment session';
+    const paymentExpiresAtLabel = language === 'vi' ? 'Hết hạn lúc' : 'Expires at';
+    const paymentWindowExpiredLabel = language === 'vi' ? 'Phiên thanh toán đã hết hạn' : 'Payment window expired';
+    const sepayCancelledLabel =
+        language === 'vi'
+            ? 'Bạn đã thoát khỏi SePay. Đơn vẫn đang chờ thanh toán, bạn có thể thanh toán lại trước khi hết hạn.'
+            : 'You exited SePay. This order is still pending and can be paid again before it expires.';
+    const sepayErrorLabel =
+        language === 'vi'
+            ? 'Thanh toán SePay chưa hoàn tất. Bạn có thể thanh toán lại trước khi hết hạn.'
+            : 'The SePay payment was not completed. You can try paying again before it expires.';
+    const paymentConfirmedLabel =
+        language === 'vi' ? 'SePay đã xác nhận thanh toán thành công' : 'SePay payment confirmed successfully';
 
     const [orders, setOrders] = useState([]);
     const [account, setAccount] = useState(null);
@@ -202,6 +220,7 @@ const Orders = () => {
     const [statusFilter, setStatusFilter] = useState('All');
     const [confirmingId, setConfirmingId] = useState('');
     const [buyingAgainId, setBuyingAgainId] = useState('');
+    const [retryingId, setRetryingId] = useState('');
     
     // Return Request State
     const [returnModalOrder, setReturnModalOrder] = useState(null);
@@ -267,8 +286,11 @@ const Orders = () => {
     }, []);
 
     const statusLabel = useCallback(
-        (status) => t.statuses[status] || status || t.unknown,
-        [t.statuses, t.unknown],
+        (status) => {
+            if (status === 'Pending Payment') return pendingPaymentLabel;
+            return t.statuses[status] || status || t.unknown;
+        },
+        [pendingPaymentLabel, t.statuses, t.unknown],
     );
 
     const handleUnauthorized = useCallback(
@@ -366,6 +388,23 @@ const Orders = () => {
         return () => window.clearInterval(intervalId);
     }, [fetchCurrentAccount, fetchOrderData, token]);
 
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const sepayStatus = String(params.get('sepay_status') || '').trim().toLowerCase();
+
+        if (!sepayStatus) return;
+
+        if (sepayStatus === 'success') {
+            toast.success(paymentConfirmedLabel);
+        } else if (sepayStatus === 'cancelled') {
+            toast.info(sepayCancelledLabel);
+        } else if (sepayStatus === 'error') {
+            toast.info(sepayErrorLabel);
+        }
+
+        navigate('/orders', { replace: true });
+    }, [location.search, navigate, paymentConfirmedLabel, sepayCancelledLabel, sepayErrorLabel]);
+
     const normalizedOrders = useMemo(
         () => orders.map((order) => ({ ...order, status: order?.status || 'Order Placed', items: Array.isArray(order?.items) ? order.items : [] })),
         [orders],
@@ -408,6 +447,18 @@ const Orders = () => {
         fetchOrderData();
     }, [fetchOrderData]);
 
+    const formatPaymentExpiry = useCallback(
+        (value) => {
+            if (!value) return '';
+
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+
+            return date.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US');
+        },
+        [language],
+    );
+
     const handleCancelOrder = async (orderId) => {
         if (!token || !orderId) return;
         if (!window.confirm(t.cancelConfirm)) return;
@@ -426,6 +477,44 @@ const Orders = () => {
             toast.error(error?.response?.data?.message || t.cancelFailed);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleRetryPayment = async (orderId) => {
+        if (!token || !orderId || retryingId) return;
+
+        try {
+            setRetryingId(orderId);
+            const response = await axios.post(
+                `${backendUrl}/api/order/retry-sepay`,
+                { orderId },
+                { headers: { token } },
+            );
+
+            if (!response?.data?.success || !response.data.checkoutUrl || !response.data.checkoutFields) {
+                toast.error(response?.data?.message || retryPaymentFailedLabel);
+                return;
+            }
+
+            const { checkoutUrl, checkoutFields } = response.data;
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = checkoutUrl;
+
+            Object.entries(checkoutFields).forEach(([key, value]) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = value;
+                form.appendChild(input);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+        } catch (error) {
+            toast.error(error?.response?.data?.message || error?.message || retryPaymentFailedLabel);
+        } finally {
+            setRetryingId('');
         }
     };
 
@@ -671,7 +760,10 @@ const Orders = () => {
 
                         {visibleOrders.map((order) => {
                             const status = order.status || 'Order Placed';
+                            const isPendingPayment = status === 'Pending Payment' && order?.paymentMethod === 'Banking' && !order?.payment;
+                            const paymentExpiryText = formatPaymentExpiry(order?.paymentExpiresAt);
                             const canCancel = ['Order Placed', 'Packing'].includes(status);
+                            const canRetryPayment = isPendingPayment;
                             const canConfirmReceived = status === 'Delivered';
                             const canBuyAgain = ['Delivered', 'Received'].includes(status);
                             const canReturn = ['Delivered', 'Received'].includes(status);
@@ -710,6 +802,13 @@ const Orders = () => {
                                                     {order?.paymentMethod || t.cod} {order?.payment ? `(${t.paid})` : `(${t.pending})`}
                                                 </span>
                                             </p>
+                                            {isPendingPayment ? (
+                                                <p className='text-xs text-amber-600'>
+                                                    {paymentExpiryText
+                                                        ? `${paymentExpiresAtLabel}: ${paymentExpiryText}`
+                                                        : paymentWindowExpiredLabel}
+                                                </p>
+                                            ) : null}
                                         </div>
                                     </div>
 
@@ -771,6 +870,17 @@ const Orders = () => {
                                         >
                                             {t.trackOrder}
                                         </button>
+
+                                        {canRetryPayment ? (
+                                            <button
+                                                onClick={() => handleRetryPayment(order._id)}
+                                                disabled={retryingId === order._id}
+                                                className='rounded-full border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-500 hover:text-white disabled:opacity-60'
+                                                type='button'
+                                            >
+                                                {retryPaymentLabel}
+                                            </button>
+                                        ) : null}
 
                                         {canConfirmReceived ? (
                                             <button
