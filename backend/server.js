@@ -23,6 +23,7 @@ import walletRouter from './routes/walletRoute.js';
 import startStockAlertJob from './utils/stockAlert.js';
 import startSePayExpiryJob from './utils/sepayExpiryJob.js';
 import aiRouter from './routes/aiRouter.js';
+import smartSearchRouter from './routes/smartSearchRoute.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -55,6 +56,7 @@ app.use('/api/behavior', behaviorRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/return', returnRouter);
 app.use('/api/wallet', walletRouter);
+app.use('/api/smart-search', smartSearchRouter);
 
 app.get('/', (req, res) => {
     res.send('Hello World! API dang chay...');

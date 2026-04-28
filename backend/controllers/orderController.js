@@ -16,7 +16,7 @@ const getSepayClient = () => new SePayPgClient({
 
 const DEDUCTION_TRIGGER_STATUSES = new Set(['Packing', 'Shipped', 'Out for Delivery', 'Delivered', 'Received']);
 const PENDING_SEPAY_STATUSES = new Set(['Pending Payment']);
-const DEFAULT_SEPAY_PENDING_TIMEOUT_SECONDS = 5 * 60;
+const DEFAULT_SEPAY_PENDING_TIMEOUT_SECONDS = 5 * 60; //đổi thời gian chờ thanh toán Banking
 
 const getSepayPendingTimeoutMs = () => {
     const configuredSeconds = Number(process.env.SEPAY_PENDING_TIMEOUT_SECONDS);
@@ -79,7 +79,7 @@ const expirePendingSePayOrders = async () => {
                 `SePay payment window expired for order #${String(order._id).slice(-8)}`,
                 order._id,
             );
-        }
+        }   
     }
 };
 
